@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from rest_framework import status
 from django.contrib.auth import get_user_model
 
-from apps.assistant.mongo import (
+from assistant.mongo import (
     get_mongo_db, log_chat_message, save_chat_feedback,
     get_recent_chat_history, check_mongo_health, reset_mongo_connection
 )
@@ -107,7 +107,7 @@ class TestMongoDBPersistenceAndResilience:
 
     def test_new_conversation_and_message_persistence(self):
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_id = "test_conv_persist_001"
             
             # 1. User message
@@ -141,7 +141,7 @@ class TestMongoDBPersistenceAndResilience:
         """Test that Python uuid.UUID objects from Django User.id are sanitized and persisted safely."""
         import uuid
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_id = "test_conv_uuid_002"
             raw_user_uuid = uuid.UUID('bff5815c-c563-4c69-8990-5ab7ab4227be')
 
@@ -162,7 +162,7 @@ class TestMongoDBPersistenceAndResilience:
     def test_guest_workflow_persistence_and_isolation(self):
         """Test guest message persistence, guest_session_id tracking, and cross-session isolation."""
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_guest = "conv_guest_001"
             session_a = "guest_session_aaa"
             session_b = "guest_session_bbb"
@@ -200,7 +200,7 @@ class TestMongoDBPersistenceAndResilience:
     def test_guest_cannot_read_authenticated_user_conversation(self):
         """Test security barrier preventing guests from reading user conversations."""
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_user = "conv_user_private_999"
 
             # Authenticated user creates conversation
@@ -232,7 +232,7 @@ class TestMongoDBPersistenceAndResilience:
     def test_message_deduplication_on_retry(self):
         """Test that retrying a request with the same request_id does not duplicate records."""
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_id = "conv_dedup_001"
             req_id = "req_retry_test_123"
 
@@ -259,7 +259,7 @@ class TestMongoDBPersistenceAndResilience:
 
     def test_conversation_history_retrieval(self):
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_id = "test_conv_history_002"
             log_chat_message(conv_id, 'user', 'What is machine learning?')
             log_chat_message(conv_id, 'assistant', 'Machine learning is a field of AI.')
@@ -273,7 +273,7 @@ class TestMongoDBPersistenceAndResilience:
 
     def test_feedback_persistence(self):
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             conv_id = "test_conv_feedback_003"
             fb_saved = save_chat_feedback(
                 conversation_id=conv_id,
@@ -331,13 +331,13 @@ class TestMongoDBPersistenceAndResilience:
 
     def test_check_mongo_health_reporting(self):
         mock_db = MockMongoDB("bridgeskill")
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+        with patch('assistant.mongo.get_mongo_db', return_value=mock_db):
             health = check_mongo_health()
             assert health['status'] == 'up'
             assert health['database'] == 'bridgeskill'
             assert health['configured'] is True
 
-        with patch('apps.assistant.mongo.get_mongo_db', return_value=None):
+        with patch('assistant.mongo.get_mongo_db', return_value=None):
             health_down = check_mongo_health()
             assert health_down['status'] == 'down'
             assert health_down['configured'] is True

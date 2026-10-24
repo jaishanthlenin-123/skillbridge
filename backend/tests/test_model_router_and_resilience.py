@@ -4,7 +4,7 @@ import requests
 from unittest.mock import patch, MagicMock
 from django.test import SimpleTestCase
 
-from apps.assistant.model_router import (
+from assistant.model_router import (
     route_model_request,
     reset_model_router_state,
     set_model_cooldown,

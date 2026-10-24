@@ -91,7 +91,7 @@ def run_verification():
     print("\n[5] Application Integration Check (apps.assistant.mongo):")
     try:
         sys.path.insert(0, str(BASE_DIR))
-        from apps.assistant.mongo import get_mongo_db, log_chat_message, save_chat_feedback
+        from assistant.mongo import get_mongo_db, log_chat_message, save_chat_feedback
         app_db = get_mongo_db()
         if app_db is not None and app_db.name == db_name:
             print(f"    - apps.assistant.mongo connected to expected database: PASS ('{app_db.name}')")

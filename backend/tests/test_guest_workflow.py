@@ -6,11 +6,11 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
-from apps.resumes.models import Resume
-from apps.jobs.models import Job, JobRequirement
-from apps.matches.models import MatchResult
-from apps.roadmaps.models import Roadmap
-from apps.accounts.guest import (
+from resumes.models import Resume
+from jobs.models import Job, JobRequirement
+from matches.models import MatchResult
+from roadmaps.models import Roadmap
+from accounts.guest import (
     create_guest_session, claim_guest_data_for_user,
     discard_guest_session, cleanup_expired_guest_sessions,
     GUEST_MAX_RESUMES

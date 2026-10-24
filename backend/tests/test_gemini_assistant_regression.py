@@ -3,10 +3,10 @@ from unittest.mock import patch, MagicMock
 from rest_framework import status
 import requests
 
-from apps.assistant.chains import generate_assistant_response
-from apps.assistant.faq_retriever import retrieve_relevant_faqs
-from apps.assistant.model_router import reset_model_router_state
-from apps.support.models import SupportTicket
+from assistant.chains import generate_assistant_response
+from assistant.faq_retriever import retrieve_relevant_faqs
+from assistant.model_router import reset_model_router_state
+from support.models import SupportTicket
 
 @pytest.fixture(autouse=True)
 def reset_router():
@@ -27,7 +27,7 @@ class TestGeminiAssistantRegression:
         }
         return mock_resp
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_hi_how_are_you_calls_gemini(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success("Hello! I'm doing great. How can I help with your career?")
 
@@ -38,7 +38,7 @@ class TestGeminiAssistantRegression:
         assert "doing great" in data['answer']
         assert mock_post.called
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_user_intro_career_calls_gemini(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success("Welcome Jaishanth! To become an ML engineer, focus on Python and PyTorch.")
 
@@ -53,7 +53,7 @@ class TestGeminiAssistantRegression:
         assert "Welcome Jaishanth" in data['answer']
         assert mock_post.called
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_how_do_i_get_a_learning_roadmap_calls_gemini(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success(
             "To get a learning roadmap on SkillBridge, first upload your resume and run a match analysis against a job."
@@ -66,7 +66,7 @@ class TestGeminiAssistantRegression:
         assert "learning roadmap" in data['answer']
         assert mock_post.called
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_explain_gradient_descent_calls_gemini(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success(
             "Gradient descent is an optimization algorithm used to minimize a loss function by iteratively moving in the direction of steepest descent."
@@ -78,7 +78,7 @@ class TestGeminiAssistantRegression:
         assert data['mode'] == 'gemini_generated'
         assert "optimization algorithm" in data['answer']
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_supervised_vs_unsupervised_calls_gemini(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success(
             "Supervised learning trains on labeled data, while unsupervised learning discovers hidden patterns in unlabeled data."
@@ -94,7 +94,7 @@ class TestGeminiAssistantRegression:
         assert data['mode'] == 'gemini_generated'
         assert "labeled data" in data['answer']
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_skillbridge_faq_question_provides_context(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success(
             "To upload your resume on SkillBridge, simply visit the Resume tab and drag and drop your PDF or DOCX file."
@@ -109,7 +109,7 @@ class TestGeminiAssistantRegression:
         system_instruction = sent_payload['system_instruction']['parts'][0]['text']
         assert "SkillBridge" in system_instruction
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_general_question_without_faqs(self, mock_post, client):
         mock_post.return_value = self.mock_gemini_success("Quantum computing utilizes superposition and entanglement.")
 
@@ -119,7 +119,7 @@ class TestGeminiAssistantRegression:
         assert data['mode'] == 'gemini_generated'
         assert "Quantum computing" in data['answer']
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_gemini_429_quota_exhaustion_returns_honest_error(self, mock_post, client):
         mock_429 = MagicMock()
         mock_429.status_code = 429
@@ -133,7 +133,7 @@ class TestGeminiAssistantRegression:
         assert "Quota Exceeded" in data['answer'] or "429" in data['answer']
         assert data['can_create_ticket'] is True
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_gemini_503_overload_returns_service_unavailable(self, mock_post, client):
         mock_503 = MagicMock()
         mock_503.status_code = 503
@@ -146,7 +146,7 @@ class TestGeminiAssistantRegression:
         assert data['mode'] == 'service_unavailable'
         assert "503" in data['answer'] or "Overloaded" in data['answer']
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_gemini_timeout_returns_clear_error(self, mock_post, client):
         mock_post.side_effect = requests.exceptions.ReadTimeout("Read timed out")
 
@@ -156,7 +156,7 @@ class TestGeminiAssistantRegression:
         assert data['mode'] == 'service_unavailable'
         assert "Timed Out" in data['answer']
 
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_gemini_empty_json_candidates_handled(self, mock_post, client):
         mock_empty = MagicMock()
         mock_empty.status_code = 200

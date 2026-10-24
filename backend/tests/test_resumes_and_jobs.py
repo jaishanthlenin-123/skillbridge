@@ -3,10 +3,10 @@ import pytest
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
-from apps.accounts.models import User
-from apps.resumes.models import Resume, ParsingStatus, Skill
-from apps.resumes.seed_taxonomy import seed_skills_in_db
-from apps.jobs.models import Job
+from accounts.models import User
+from resumes.models import Resume, ParsingStatus, Skill
+from resumes.seed_taxonomy import seed_skills_in_db
+from jobs.models import Job
 
 @pytest.mark.django_db
 class TestResumesAndJobs:

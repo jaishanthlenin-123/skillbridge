@@ -1,11 +1,11 @@
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
-from apps.accounts.models import User
-from apps.resumes.models import Resume, ResumeSkill
-from apps.jobs.models import Job, JobRequirement
-from apps.matches.models import MatchResult
-from apps.roadmaps.models import Roadmap
+from accounts.models import User
+from resumes.models import Resume, ResumeSkill
+from jobs.models import Job, JobRequirement
+from matches.models import MatchResult
+from roadmaps.models import Roadmap
 
 @pytest.mark.django_db
 class TestMatchesAndRoadmaps:

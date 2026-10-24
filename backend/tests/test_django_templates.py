@@ -1,6 +1,6 @@
 import pytest
 from django.test import Client
-from apps.core.models import ErrorCode
+from core.models import ErrorCode
 
 @pytest.mark.django_db
 class TestDjangoTemplates:

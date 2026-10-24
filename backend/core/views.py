@@ -1,0 +1,180 @@
+import os
+import requests
+from rest_framework import views, permissions, status
+from rest_framework.response import Response
+from django.views.generic import TemplateView
+from django.db import connection
+from django.conf import settings
+from config.errors import ERROR_REGISTRY, get_error_info
+from .models import ErrorCode
+
+class HealthCheckView(views.APIView):
+    """
+    Liveness health check endpoint.
+    Indicates whether the application process is running and accepting HTTP requests.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({
+            'status': 'healthy',
+            'application': 'SkillBridge API',
+            'environment': 'development' if settings.DEBUG else 'production',
+            'request_id': getattr(request, 'request_id', 'unknown'),
+        }, status=status.HTTP_200_OK)
+
+class ReadinessCheckView(views.APIView):
+    """
+    Readiness health check endpoint.
+    Verifies that required backing services (database, ML service) are reachable.
+    Reports status of optional AI integrations without leaking secrets.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        checks = {
+            'database': {'status': 'down'},
+            'ml_service': {'status': 'unknown'},
+            'gemini_llm': {'configured': False},
+            'mongodb_atlas': {'configured': False},
+        }
+
+        # 1. Check Primary Relational Database
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                row = cursor.fetchone()
+                if row and row[0] == 1:
+                    checks['database'] = {
+                        'status': 'up',
+                        'engine': connection.vendor
+                    }
+        except Exception as e:
+            checks['database'] = {'status': 'down', 'error': str(e)}
+
+        # 2. Check ML Microservice
+        ml_url = getattr(settings, 'ML_SERVICE_URL', 'http://127.0.0.1:8001')
+        try:
+            resp = requests.get(f"{ml_url}/internal/v1/health/", timeout=3.0)
+            if resp.status_code == 200:
+                checks['ml_service'] = {'status': 'up', 'url': ml_url}
+            else:
+                checks['ml_service'] = {'status': 'degraded', 'http_code': resp.status_code}
+        except Exception:
+            checks['ml_service'] = {'status': 'down', 'fallback_active': True}
+
+        # 3. Check Optional Integrations (Gemini & MongoDB)
+        gemini_key = os.getenv('GEMINI_API_KEY', '').strip()
+        try:
+            from assistant.model_router import get_configured_models
+            primary_m, fallback_ms = get_configured_models()
+        except Exception:
+            primary_m, fallback_ms = 'gemini-3.1-flash-lite', ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest']
+
+        checks['gemini_llm'] = {
+            'configured': bool(gemini_key),
+            'primary_model': primary_m,
+            'fallback_models': fallback_ms,
+            'model': primary_m,
+            'mode': 'live_genai' if gemini_key else 'service_unavailable'
+        }
+
+        try:
+            from assistant.mongo import check_mongo_health
+            checks['mongodb_atlas'] = check_mongo_health()
+        except Exception as e:
+            checks['mongodb_atlas'] = {
+                'status': 'down',
+                'configured': bool(os.getenv('MONGODB_URI')),
+                'database': os.getenv('MONGODB_DATABASE', 'bridgeskill'),
+                'error': str(e),
+            }
+
+        overall_ready = checks['database']['status'] == 'up'
+        http_status = status.HTTP_200_OK if overall_ready else status.HTTP_503_SERVICE_UNAVAILABLE
+
+        return Response({
+            'ready': overall_ready,
+            'checks': checks,
+            'request_id': getattr(request, 'request_id', 'unknown'),
+        }, status=http_status)
+
+class ErrorRegistryListView(views.APIView):
+    """
+    Exposes the centralized Error Code Registry for frontend inspection and assistant explanations.
+    Backed by PostgreSQL (skillbridge_error_codes) with resilient fallback to ERROR_REGISTRY.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            db_errors = list(ErrorCode.objects.filter(is_active=True).order_by('code'))
+            if db_errors:
+                return Response({
+                    'count': len(db_errors),
+                    'errors': [e.to_dict() for e in db_errors]
+                })
+        except Exception:
+            pass
+
+        return Response({
+            'count': len(ERROR_REGISTRY),
+            'errors': list(ERROR_REGISTRY.values())
+        })
+
+class ErrorRegistryDetailView(views.APIView):
+    """
+    Detailed lookup for a specific error code (e.g. 404 or SB-1001).
+    Backed by PostgreSQL (skillbridge_error_codes) with resilient fallback.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, code):
+        clean_code = str(code).strip().upper()
+        try:
+            db_err = ErrorCode.objects.filter(code__iexact=clean_code, is_active=True).first()
+            if not db_err and clean_code.isdigit():
+                db_err = ErrorCode.objects.filter(http_status=int(clean_code), is_active=True).first()
+            if db_err:
+                return Response(db_err.to_dict())
+        except Exception:
+            pass
+
+        info = get_error_info(code)
+        return Response(info)
+
+class PortalHomeView(TemplateView):
+    """
+    Renders the SkillBridge developer portal homepage using Django Templates (DTL).
+    """
+    template_name = 'home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'SkillBridge Developer & API Portal'
+        context['frontend_url'] = 'https://skillbridge-frontend-v45n.onrender.com'
+        try:
+            cnt = ErrorCode.objects.filter(is_active=True).count()
+            context['error_count'] = cnt if cnt > 0 else len(ERROR_REGISTRY)
+        except Exception:
+            context['error_count'] = len(ERROR_REGISTRY)
+        return context
+
+class PortalErrorRegistryView(TemplateView):
+    """
+    Renders the platform error registry catalog using Django Templates (DTL).
+    """
+    template_name = 'error_registry.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'SkillBridge Standard Error Catalog'
+        try:
+            db_errors = list(ErrorCode.objects.filter(is_active=True).order_by('code'))
+            if db_errors:
+                context['errors'] = [e.to_dict() for e in db_errors]
+            else:
+                context['errors'] = list(ERROR_REGISTRY.values())
+        except Exception:
+            context['errors'] = list(ERROR_REGISTRY.values())
+        return context

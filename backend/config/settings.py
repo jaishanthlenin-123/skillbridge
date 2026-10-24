@@ -37,17 +37,17 @@ INSTALLED_APPS = [
     'drf_spectacular',
     
     # SkillBridge core apps
-    'apps.core.apps.CoreConfig',
-    'apps.accounts.apps.AccountsConfig',
-    'apps.resumes.apps.ResumesConfig',
-    'apps.jobs.apps.JobsConfig',
-    'apps.matches.apps.MatchesConfig',
-    'apps.roadmaps.apps.RoadmapsConfig',
-    'apps.audit.apps.AuditConfig',
-    'apps.faq.apps.FAQConfig',
-    'apps.support.apps.SupportConfig',
-    'apps.assistant.apps.AssistantConfig',
-    'apps.integrations.apps.IntegrationsConfig',
+    'core.apps.CoreConfig',
+    'accounts.apps.AccountsConfig',
+    'resumes.apps.ResumesConfig',
+    'jobs.apps.JobsConfig',
+    'matches.apps.MatchesConfig',
+    'roadmaps.apps.RoadmapsConfig',
+    'audit.apps.AuditConfig',
+    'faq.apps.FAQConfig',
+    'support.apps.SupportConfig',
+    'assistant.apps.AssistantConfig',
+    'integrations.apps.IntegrationsConfig',
 ]
 
 MIDDLEWARE = [

@@ -78,15 +78,16 @@ flowchart TB
     end
 
     subgraph Django["Django REST Backend - Port 8080"]
-        GuestAuth["apps.accounts (Guest & Token Auth)"]
-        Resumes["apps.resumes (Private Storage Sandbox)"]
-        Jobs["apps.jobs (Sample & User Jobs)"]
-        Matches["apps.matches (Hybrid Pipeline Orchestrator)"]
-        Roadmaps["apps.roadmaps (Learning Milestones)"]
-        FAQ["apps.faq (SQL Knowledge Base)"]
-        Support["apps.support (PostgreSQL Tickets)"]
-        Assistant["apps.assistant (Gemini + SQL Retriever)"]
-        Integrations["apps.integrations (GitHub REST Client)"]
+        GuestAuth["accounts (Guest & Token Auth)"]
+        Resumes["resumes (Private Storage Sandbox)"]
+        Jobs["jobs (Sample & User Jobs)"]
+        Matches["matches (Hybrid Pipeline Orchestrator)"]
+        Roadmaps["roadmaps (Learning Milestones)"]
+        FAQ["faq (SQL Knowledge Base)"]
+        Support["support (PostgreSQL Tickets)"]
+        Assistant["assistant (Gemini + SQL Retriever)"]
+        Integrations["integrations (GitHub REST Client)"]
+        Core["core (Portal Views & Health)"]
         Middleware["Logging, Rate Limits & Correlation (X-Request-ID)"]
     end
 
@@ -118,6 +119,59 @@ flowchart TB
 3. **Data Isolation**: Guest uploads and analyses enforce foreign-key ownership strictly tied to that guest instance. One guest cannot access or enumerate another guest's data.
 4. **Zero-Friction Conversion**: When a guest chooses to register or log in, `claim_guest_data_for_user()` transfers all resumes, match results, and roadmaps to the new authenticated user account.
 5. **Session Discard & Cleanup**: Guests can click "Discard Session" at any time to purge their uploaded documents and metadata immediately. An automated management command cleans up sessions inactive for over 24 hours.
+
+---
+
+### Project Structure & Django Architecture
+
+```text
+SkillBridge/
+│
+├── backend/                        # Django REST API Backend
+│   ├── accounts/                   # User authentication, profiles, guest sessions
+│   ├── assistant/                  # AI Assistant (Gemini LLM + FAQ SQL grounding)
+│   ├── audit/                      # Audit event logging & telemetry
+│   ├── core/                       # Template portal, health checks, error registry
+│   ├── faq/                        # SQL Knowledge Base & FAQ management
+│   ├── integrations/               # External APIs (GitHub REST client)
+│   ├── jobs/                       # Job listings, CRUD & requirement extraction
+│   ├── matches/                    # Hybrid matching engine & scoring pipeline
+│   ├── resumes/                    # Resume parsing, skills taxonomy & private storage
+│   ├── roadmaps/                   # Personalized learning roadmaps & milestones
+│   ├── support/                    # Support ticketing system with complete CRUD
+│   │
+│   ├── config/                     # Central Django project configuration
+│   │   ├── settings.py             # Django settings & environment variables
+│   │   ├── urls.py                 # Central URL routing
+│   │   ├── wsgi.py                 # WSGI application entrypoint (Gunicorn)
+│   │   ├── asgi.py                 # ASGI application entrypoint
+│   │   ├── errors.py               # Standardized error registry
+│   │   └── middleware.py           # Logging, security & correlation middleware
+│   │
+│   ├── templates/                  # Server-side Django templates
+│   │   ├── base.html               # Base portal layout
+│   │   ├── home.html               # Developer portal homepage
+│   │   └── error_registry.html     # Interactive error registry reference
+│   │
+│   ├── static/                     # Static portal assets
+│   ├── staticfiles/                # Collected production static assets
+│   ├── manage.py                   # Django CLI management script
+│   └── requirements.txt            # Python backend dependencies
+│
+├── datasets/                       # Sample resumes & jobs for evaluation
+├── docs/                           # Architecture specs & verification audits
+├── evaluation/                     # Automated evaluation test cases
+├── frontend/                       # React 18 + Vite SPA client
+├── infrastructure/                 # Docker Compose & container configurations
+├── ml_service/                     # FastAPI ML microservice (Sentence-Transformers)
+│
+├── .env.example                    # Environment variable template
+├── .gitignore                      # Git ignore rules
+├── Makefile                        # Project automation shortcuts
+├── README.md                       # Comprehensive documentation
+├── pytest.ini                      # Pytest test runner configuration
+└── render.yaml                     # Render Blueprint deployment specification
+```
 
 ---
 

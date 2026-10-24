@@ -4,12 +4,12 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 
-from apps.faq.models import FAQ, FAQCategory
-from apps.support.models import SupportTicket
-from apps.jobs.models import Job
-from apps.resumes.models import Resume, Skill, ResumeSkill
-from apps.matches.models import MatchResult
-from apps.core.models import ErrorCode
+from faq.models import FAQ, FAQCategory
+from support.models import SupportTicket
+from jobs.models import Job
+from resumes.models import Resume, Skill, ResumeSkill
+from matches.models import MatchResult
+from core.models import ErrorCode
 
 User = get_user_model()
 
@@ -210,7 +210,7 @@ class TestPhase2SkillBridgeUpgrades:
         assert r_data['checks']['database']['status'] == 'up'
 
     # 6. AI Assistant Chat & Escalation Tests
-    @patch('apps.assistant.chains.requests.post')
+    @patch('assistant.chains.requests.post')
     def test_assistant_chat_error_explanation(self, mock_post, client):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -253,7 +253,7 @@ class TestPhase2SkillBridgeUpgrades:
         assert resp.status_code == status.HTTP_200_OK
 
     # 7. GitHub Integration API Test
-    @patch('apps.integrations.github.requests.get')
+    @patch('integrations.github.requests.get')
     def test_github_profile_insights(self, mock_get, client):
         mock_user_resp = MagicMock()
         mock_user_resp.status_code = 200

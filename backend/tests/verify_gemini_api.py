@@ -90,7 +90,7 @@ def run_gemini_verification():
     # Test Assistant Chain with Gemini Configured
     print("\n[5] Assistant Chain Integration Check (with Gemini active):")
     try:
-        from apps.assistant.chains import generate_assistant_response
+        from assistant.chains import generate_assistant_response
         sample_faqs = [
             {
                 'id': 1,

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 from rest_framework.test import APIClient
-from apps.core.models import ErrorCode
+from core.models import ErrorCode
 from config.errors import ERROR_REGISTRY
 
 @pytest.mark.django_db
@@ -10,7 +10,7 @@ class TestAssistantErrorRouting:
         self.client = APIClient()
         self.url = '/api/v1/assistant/chat/'
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_404_question_returns_predefined_response_without_gemini(self, mock_gemini):
         res = self.client.post(
             self.url,
@@ -27,7 +27,7 @@ class TestAssistantErrorRouting:
         # Gemini was NOT called!
         mock_gemini.assert_not_called()
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_500_question_returns_predefined_response_without_gemini(self, mock_gemini):
         res = self.client.post(
             self.url,
@@ -43,7 +43,7 @@ class TestAssistantErrorRouting:
         # Gemini was NOT called!
         mock_gemini.assert_not_called()
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_registered_error_sb_1001_bypasses_gemini(self, mock_gemini):
         res = self.client.post(
             self.url,
@@ -57,7 +57,7 @@ class TestAssistantErrorRouting:
         # Gemini was NOT called!
         mock_gemini.assert_not_called()
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_unknown_error_uses_gemini(self, mock_gemini):
         mock_gemini.return_value = {
             'answer': 'Error 999 is an uncataloged custom condition.',
@@ -76,7 +76,7 @@ class TestAssistantErrorRouting:
         assert 'uncataloged' in data['answer']
         mock_gemini.assert_called_once()
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_general_error_question_uses_gemini(self, mock_gemini):
         mock_gemini.return_value = {
             'answer': 'I can assist you with general errors on the platform.',
@@ -94,7 +94,7 @@ class TestAssistantErrorRouting:
         assert data['mode'] == 'gemini_generated'
         mock_gemini.assert_called_once()
 
-    @patch('apps.assistant.views.generate_assistant_response')
+    @patch('assistant.views.generate_assistant_response')
     def test_ordinary_question_with_numbers_does_not_trigger_error_route(self, mock_gemini):
         mock_gemini.return_value = {
             'answer': 'Working at Fortune 500 companies requires strong technical fundamentals.',
