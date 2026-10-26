@@ -1,0 +1,117 @@
+{
+  "version": "1.0.0",
+  "description": "SkillBridge Ground-Truth Benchmark Cases for Hybrid NLP Evaluation",
+  "cases": [
+    {
+      "id": "case_001_fullstack_strong",
+      "category": "Full Stack",
+      "split": "dev",
+      "human_relevance_score": 0.92,
+      "job": {
+        "title": "Senior Full-Stack Engineer",
+        "description": "We are seeking a Senior Full-Stack Engineer with strong production experience in React, TypeScript, Python, and PostgreSQL. Experience with Docker, REST APIs, and Tailwind CSS is highly preferred. Must understand responsive design, state management, and unit testing.",
+        "requirements": [
+          {"skill": "React", "mandatory": true, "weight": 1.0},
+          {"skill": "TypeScript", "mandatory": true, "weight": 1.0},
+          {"skill": "Python", "mandatory": true, "weight": 1.0},
+          {"skill": "PostgreSQL", "mandatory": true, "weight": 1.0},
+          {"skill": "Docker", "mandatory": false, "weight": 0.5},
+          {"skill": "REST APIs", "mandatory": true, "weight": 1.0},
+          {"skill": "Tailwind CSS", "mandatory": false, "weight": 0.5}
+        ]
+      },
+      "resume": {
+        "text": "Full-Stack Software Engineer with 5 years building scalable web apps. Core skills: React.js, TypeScript, Python, Django, REST APIs, and Postgres. Containerized services using Docker and orchestrated PostgreSQL clusters. Styled interfaces with modern Tailwind CSS.",
+        "expected_skills": ["React", "TypeScript", "Python", "Django", "REST APIs", "PostgreSQL", "Docker", "Tailwind CSS"]
+      }
+    },
+    {
+      "id": "case_002_fullstack_moderate",
+      "category": "Full Stack",
+      "split": "dev",
+      "human_relevance_score": 0.60,
+      "job": {
+        "title": "Senior Full-Stack Engineer",
+        "description": "We are seeking a Senior Full-Stack Engineer with strong production experience in React, TypeScript, Python, and PostgreSQL. Experience with Docker, REST APIs, and Tailwind CSS is highly preferred.",
+        "requirements": [
+          {"skill": "React", "mandatory": true, "weight": 1.0},
+          {"skill": "TypeScript", "mandatory": true, "weight": 1.0},
+          {"skill": "Python", "mandatory": true, "weight": 1.0},
+          {"skill": "PostgreSQL", "mandatory": true, "weight": 1.0},
+          {"skill": "Docker", "mandatory": false, "weight": 0.5},
+          {"skill": "REST APIs", "mandatory": true, "weight": 1.0}
+        ]
+      },
+      "resume": {
+        "text": "Frontend Developer with 3 years experience. Skilled in React, JavaScript, HTML, CSS, and basic Node.js. Used MySQL for personal projects. Built responsive user interfaces and consumed REST APIs.",
+        "expected_skills": ["React", "JavaScript", "HTML", "CSS", "Node.js", "MySQL", "REST APIs"]
+      }
+    },
+    {
+      "id": "case_003_nlp_expert",
+      "category": "Machine Learning",
+      "split": "dev",
+      "human_relevance_score": 0.95,
+      "job": {
+        "title": "NLP / Machine Learning Engineer",
+        "description": "Seeking an NLP Engineer to design semantic search and LLM extraction pipelines. Required: Python, PyTorch, Transformers, Hugging Face, scikit-learn, and FastAPI. Experience with vector embeddings and MLOps preferred.",
+        "requirements": [
+          {"skill": "Python", "mandatory": true, "weight": 1.0},
+          {"skill": "PyTorch", "mandatory": true, "weight": 1.0},
+          {"skill": "Transformers", "mandatory": true, "weight": 1.0},
+          {"skill": "Hugging Face", "mandatory": true, "weight": 1.0},
+          {"skill": "scikit-learn", "mandatory": true, "weight": 1.0},
+          {"skill": "FastAPI", "mandatory": true, "weight": 1.0},
+          {"skill": "Vector Embeddings", "mandatory": false, "weight": 0.5}
+        ]
+      },
+      "resume": {
+        "text": "Machine Learning Researcher and Engineer specialized in Natural Language Processing. Proficient in Python, PyTorch, Hugging Face Transformers, sentence-transformers, and scikit-learn. Deployed low-latency inference services with FastAPI and built vector embedding search indexes.",
+        "expected_skills": ["Python", "PyTorch", "Transformers", "Hugging Face", "scikit-learn", "FastAPI", "Vector Embeddings", "NLP"]
+      }
+    },
+    {
+      "id": "case_004_nlp_low_mismatch",
+      "category": "Machine Learning",
+      "split": "test",
+      "human_relevance_score": 0.20,
+      "job": {
+        "title": "NLP / Machine Learning Engineer",
+        "description": "Seeking an NLP Engineer to design semantic search and LLM extraction pipelines. Required: Python, PyTorch, Transformers, Hugging Face, scikit-learn, and FastAPI.",
+        "requirements": [
+          {"skill": "Python", "mandatory": true, "weight": 1.0},
+          {"skill": "PyTorch", "mandatory": true, "weight": 1.0},
+          {"skill": "Transformers", "mandatory": true, "weight": 1.0},
+          {"skill": "Hugging Face", "mandatory": true, "weight": 1.0},
+          {"skill": "FastAPI", "mandatory": true, "weight": 1.0}
+        ]
+      },
+      "resume": {
+        "text": "Embedded C++ Developer working on automotive firmware, CAN bus controllers, and real-time RTOS microcontrollers. Strong background in C++, Assembly, hardware debugging, and oscilloscope signal analysis.",
+        "expected_skills": ["C++", "Assembly", "RTOS", "Embedded Systems"]
+      }
+    },
+    {
+      "id": "case_005_devops_strong",
+      "category": "DevOps",
+      "split": "test",
+      "human_relevance_score": 0.88,
+      "job": {
+        "title": "Cloud DevOps Engineer",
+        "description": "Looking for a DevOps Engineer with extensive knowledge in Kubernetes, Docker, AWS, Terraform, and CI/CD pipelines. Linux administration and Prometheus monitoring required.",
+        "requirements": [
+          {"skill": "Kubernetes", "mandatory": true, "weight": 1.0},
+          {"skill": "Docker", "mandatory": true, "weight": 1.0},
+          {"skill": "AWS", "mandatory": true, "weight": 1.0},
+          {"skill": "Terraform", "mandatory": true, "weight": 1.0},
+          {"skill": "CI/CD", "mandatory": true, "weight": 1.0},
+          {"skill": "Linux", "mandatory": true, "weight": 1.0}
+        ]
+      },
+      "resume": {
+        "text": "Site Reliability and DevOps Engineer. Managed multi-region EKS clusters in AWS. Authored infrastructure as code using Terraform and Ansible. Built GitLab CI/CD pipelines and packaged microservices with Docker. Deep Linux OS tuning and Prometheus alerting.",
+        "expected_skills": ["Kubernetes", "AWS", "Terraform", "Ansible", "CI/CD", "Docker", "Linux", "Prometheus"]
+      }
+    }
+  ]
+}

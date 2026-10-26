@@ -1,0 +1,1 @@
+# SkillBridge Django Config Package
