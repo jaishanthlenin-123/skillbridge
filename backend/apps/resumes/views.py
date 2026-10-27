@@ -33,6 +33,14 @@ class ResumeListCreateView(views.APIView):
         uploaded_file = serializer.validated_data['file']
         title = serializer.validated_data.get('title') or uploaded_file.name
 
+        from apps.accounts.guest import is_guest_user, GUEST_MAX_RESUMES
+        if is_guest_user(request.user):
+            existing_count = Resume.objects.filter(owner=request.user).count()
+            if existing_count >= GUEST_MAX_RESUMES:
+                return Response({
+                    'error': f'Guest upload limit reached (maximum {GUEST_MAX_RESUMES} resumes per guest session). Please delete an existing upload or create an account to store more resumes.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             stored_meta = validate_and_save_private_file(uploaded_file, str(request.user.id))
         except ValidationError as e:

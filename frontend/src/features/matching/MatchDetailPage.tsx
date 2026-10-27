@@ -94,7 +94,7 @@ export const MatchDetailPage: React.FC = () => {
             <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
               <span>Resume: {match.resume_title}</span>
               <span>•</span>
-              <span>Model: {match.model_version}</span>
+              <span className="text-indigo-400">AI-Assisted Analysis</span>
               <span>•</span>
               <span>Evaluated {new Date(match.created_at).toLocaleDateString()}</span>
             </div>
@@ -123,12 +123,29 @@ export const MatchDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {api.isGuest() && (
+        <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-indigo-400 shrink-0" />
+            <p className="text-xs text-indigo-200">
+              <strong>Guest Session:</strong> This match evaluation is saved in your current session. Sign up to permanently keep your results and track learning progress.
+            </p>
+          </div>
+          <Link
+            to="/register"
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shrink-0 transition-all"
+          >
+            Create Free Account
+          </Link>
+        </div>
+      )}
+
       {/* Main Score Hero Card */}
       <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-tr from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/25 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
         <div className="md:col-span-2 space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Explainable Hybrid Match Engine</span>
+            <span>Match Alignment Score</span>
           </div>
 
           <div className="flex items-baseline gap-4">
@@ -136,7 +153,7 @@ export const MatchDetailPage: React.FC = () => {
               {match.overall_score.toFixed(1)}%
             </div>
             <div className="text-sm text-slate-300 font-medium">
-              Overall Evidence Alignment
+              Overall Qualifications Fit
             </div>
           </div>
 
@@ -147,7 +164,7 @@ export const MatchDetailPage: React.FC = () => {
           <div className="pt-2 flex items-center gap-2 text-[11px] text-slate-400">
             <Info className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
             <span>
-              {match.structured_explanation.disclaimer || 'Calculated purely on verified skill evidence. Not a hiring probability guarantee.'}
+              Skill match scores are advisory indicators designed to guide skill growth, not a hiring guarantee.
             </span>
           </div>
         </div>
@@ -167,39 +184,39 @@ export const MatchDetailPage: React.FC = () => {
 
       {/* Component Breakdown Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Component C: Weighted */}
+        {/* Core Requirements */}
         <div className="glass-card p-5 rounded-xl">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
-            <span>Component C (Weight 0.45)</span>
+            <span>Primary Weight</span>
             <span className="text-emerald-400 font-bold">{match.weighted_coverage_score}%</span>
           </div>
-          <h4 className="text-sm font-bold text-white">Requirement-Weighted</h4>
+          <h4 className="text-sm font-bold text-white">Core Requirements Fit</h4>
           <p className="text-xs text-slate-400 mt-1">
-            Accounts for mandatory qualifications vs preferred nice-to-haves with partial credit for adjacent skills.
+            Evaluates required must-have skills versus preferred qualifications, recognizing related expertise.
           </p>
         </div>
 
-        {/* Component A: Coverage */}
+        {/* Skill Overlap */}
         <div className="glass-card p-5 rounded-xl">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
-            <span>Component A (Weight 0.35)</span>
+            <span>Skill Match</span>
             <span className="text-violet-400 font-bold">{match.coverage_score}%</span>
           </div>
-          <h4 className="text-sm font-bold text-white">Canonical Skill Overlap</h4>
+          <h4 className="text-sm font-bold text-white">Skill Overlap</h4>
           <p className="text-xs text-slate-400 mt-1">
-            Strict Jaccard intersection of normalized canonical technical skills across the requirement set.
+            Direct overlap between technical skills identified on your resume and skills requested in the job description.
           </p>
         </div>
 
-        {/* Component B: Semantic */}
+        {/* Contextual Fit */}
         <div className="glass-card p-5 rounded-xl">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
-            <span>Component B (Weight 0.20)</span>
+            <span>Context Fit</span>
             <span className="text-indigo-400 font-bold">{match.semantic_score}%</span>
           </div>
-          <h4 className="text-sm font-bold text-white">Dense Semantic Similarity</h4>
+          <h4 className="text-sm font-bold text-white">Contextual Background Fit</h4>
           <p className="text-xs text-slate-400 mt-1">
-            SentenceTransformers MiniLM-L6 vector embeddings measuring contextual sentence alignment.
+            Measures how well your experience descriptions and project context align with the responsibilities in the role.
           </p>
         </div>
       </div>

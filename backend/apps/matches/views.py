@@ -29,9 +29,10 @@ class MatchListCreateView(views.APIView):
         resume_id = serializer.validated_data['resume_id']
         job_id = serializer.validated_data['job_id']
 
-        # Enforce resource ownership
+        # Enforce resource ownership (resume must belong to user, job can be user-owned or system sample)
         resume = get_object_or_404(Resume, id=resume_id, owner=request.user)
-        job = get_object_or_404(Job, id=job_id, owner=request.user)
+        from django.db.models import Q
+        job = get_object_or_404(Job, Q(id=job_id) & (Q(owner=request.user) | Q(is_sample=True)))
 
         # Prepare payload for ML match
         resume_skills_data = [

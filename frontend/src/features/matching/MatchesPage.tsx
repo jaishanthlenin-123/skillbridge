@@ -65,7 +65,7 @@ export const MatchesPage: React.FC = () => {
       const match = await api.createMatch(selectedResumeId, selectedJobId);
       navigate(`/matches/${match.id}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to calculate hybrid match.');
+      setError(err.message || 'Failed to analyze skill match.');
     } finally {
       setCalculating(false);
     }
@@ -84,9 +84,9 @@ export const MatchesPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Match Intelligence & Scoring</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Skill Match Analysis</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Evaluate resume alignment against job requirements using our explainable hybrid scoring engine.
+          Compare your resume against any target job to discover your strengths, skill gaps, and recommended next steps.
         </p>
       </div>
 
@@ -94,12 +94,27 @@ export const MatchesPage: React.FC = () => {
       <div className="glass-panel p-6 rounded-2xl border border-indigo-500/20">
         <h3 className="text-base font-semibold text-white flex items-center gap-2 mb-4">
           <Sparkles className="h-4 w-4 text-indigo-400" />
-          <span>Run New Explainable Match</span>
+          <span>Compare Resume with Job</span>
         </h3>
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
             {error}
+          </div>
+        )}
+
+        {resumes.length === 0 && !loading && (
+          <div className="mb-4 p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <span className="text-indigo-200">
+              Please upload a resume first to evaluate qualification fit against our job library.
+            </span>
+            <Link
+              to="/resumes"
+              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shrink-0 shadow-md transition-all flex items-center gap-1.5"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>Upload Resume First</span>
+            </Link>
           </div>
         )}
 
@@ -127,10 +142,10 @@ export const MatchesPage: React.FC = () => {
               onChange={(e) => setSelectedJobId(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
             >
-              {jobs.length === 0 && <option value="">No jobs found - create one first</option>}
+              {jobs.length === 0 && <option value="">No jobs found - create one or seed samples</option>}
               {jobs.map((j) => (
                 <option key={j.id} value={j.id}>
-                  {j.title} {j.company_name ? `(${j.company_name})` : ''}
+                  {j.is_sample ? '📋 [Sample] ' : '💼 '}{j.title} {j.company_name ? `(${j.company_name})` : ''}
                 </option>
               ))}
             </select>
@@ -146,7 +161,7 @@ export const MatchesPage: React.FC = () => {
             ) : (
               <>
                 <GitCompare className="h-3.5 w-3.5" />
-                <span>Calculate Match</span>
+                <span>Analyze Match</span>
               </>
             )}
           </button>
@@ -156,7 +171,7 @@ export const MatchesPage: React.FC = () => {
       {/* Match History Table */}
       <div className="glass-panel rounded-xl overflow-hidden">
         <div className="p-5 border-b border-slate-800">
-          <h3 className="text-base font-semibold text-white">Historical Match Evaluations ({matches.length})</h3>
+          <h3 className="text-base font-semibold text-white">Match Evaluations ({matches.length})</h3>
         </div>
 
         {loading ? (

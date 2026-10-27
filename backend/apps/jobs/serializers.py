@@ -13,7 +13,11 @@ class JobListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Job
-        fields = ('id', 'title', 'company_name', 'source_url', 'requirements_count', 'created_at', 'updated_at')
+        fields = (
+            'id', 'title', 'company_name', 'source_url', 'is_sample',
+            'location', 'employment_type', 'experience_level',
+            'requirements_count', 'created_at', 'updated_at'
+        )
         read_only_fields = fields
 
 class JobDetailSerializer(serializers.ModelSerializer):
@@ -21,10 +25,17 @@ class JobDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Job
-        fields = ('id', 'title', 'company_name', 'description', 'source_url', 'requirements', 'created_at', 'updated_at')
+        fields = (
+            'id', 'title', 'company_name', 'description', 'source_url',
+            'is_sample', 'location', 'employment_type', 'experience_level',
+            'requirements', 'created_at', 'updated_at'
+        )
         read_only_fields = ('id', 'requirements', 'created_at', 'updated_at')
 
 class JobCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
-        fields = ('id', 'title', 'company_name', 'description', 'source_url')
+        fields = (
+            'id', 'title', 'company_name', 'description', 'source_url',
+            'is_sample', 'location', 'employment_type', 'experience_level'
+        )

@@ -65,6 +65,10 @@ export interface JobListItem {
   title: string;
   company_name: string;
   source_url: string;
+  is_sample?: boolean;
+  location?: string;
+  employment_type?: string;
+  experience_level?: string;
   requirements_count: number;
   created_at: string;
   updated_at: string;
@@ -169,4 +173,82 @@ export interface AuditEvent {
   event_type: string;
   timestamp: string;
   metadata: Record<string, any>;
+}
+
+export interface FAQCategory {
+  id: string;
+  name: string;
+  slug: string;
+  order_index: number;
+  faq_count: number;
+}
+
+export interface FAQ {
+  id: string;
+  category: string | null;
+  category_name?: string;
+  question: string;
+  answer: string;
+  order_index: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticket_number: string;
+  contact_email: string;
+  subject: string;
+  description: string;
+  category: string;
+  priority: string;
+  status: string;
+  conversation_id?: string;
+  diagnostic_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  mode?: string;
+  ticket_number?: string;
+  ticket_created?: boolean;
+  can_create_ticket?: boolean;
+  grounded_faqs?: string[];
+  persisted_to_mongo?: boolean;
+}
+
+export interface ErrorRegistryItem {
+  code: string;
+  http_status: number;
+  title: string;
+  meaning: string;
+  typical_cause: string;
+  explanation: string;
+  recovery_action: string;
+  retryable: boolean;
+}
+
+export interface GitHubInsight {
+  status: string;
+  message?: string;
+  username: string;
+  name?: string;
+  bio?: string;
+  public_repos?: number;
+  total_stars_in_top_repos?: number;
+  top_languages?: string[];
+  skills_topics?: string[];
+  repos?: Array<{
+    name: string;
+    description: string;
+    language: string;
+    stars: number;
+    url: string;
+  }>;
+  avatar_url?: string;
 }

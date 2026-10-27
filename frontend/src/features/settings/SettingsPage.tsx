@@ -70,7 +70,7 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1">Account UUID</label>
+            <label className="text-slate-400 block mb-1">Member ID</label>
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono truncate">
               {user?.id || '—'}
             </div>
@@ -96,7 +96,7 @@ export const SettingsPage: React.FC = () => {
       <div className="glass-panel p-6 rounded-xl space-y-4">
         <h3 className="text-base font-semibold text-white flex items-center gap-2">
           <Shield className="h-4 w-4 text-emerald-400" />
-          <span>Defensive Privacy & Data Retention Policy</span>
+          <span>Privacy & Data Protection Policy</span>
         </h3>
 
         <div className="space-y-3 text-xs text-slate-300 leading-relaxed">

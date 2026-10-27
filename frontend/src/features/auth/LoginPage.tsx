@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BrainCircuit, Lock, Mail, ArrowRight, AlertCircle, Shield } from 'lucide-react';
 import { api } from '../../services/api';
+import { ChatWidget } from '../../components/Chat/ChatWidget';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export const LoginPage: React.FC = () => {
             <BrainCircuit className="h-7 w-7 text-white" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Welcome back to SkillBridge</h2>
-          <p className="text-sm text-slate-400 mt-1">Sign in to access your resume intelligence and match analytics</p>
+          <p className="text-sm text-slate-400 mt-1">Sign in to access your resumes, job matches, and career roadmaps</p>
         </div>
 
         <div className="glass-panel rounded-2xl p-8 shadow-2xl">
@@ -111,6 +112,7 @@ export const LoginPage: React.FC = () => {
           <span>Encrypted Session • Zero Personal Data Leakage</span>
         </div>
       </div>
+      <ChatWidget />
     </div>
   );
 };

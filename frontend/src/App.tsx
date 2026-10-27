@@ -14,6 +14,12 @@ import { RoadmapDetailPage } from './features/roadmap/RoadmapDetailPage';
 import { HistoryPage } from './features/history/HistoryPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
+import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import { FAQPage } from './features/faq/FAQPage';
+import { SupportPage } from './features/support/SupportPage';
+import { NotFoundPage } from './features/errors/NotFoundPage';
+import { ServerErrorPage } from './features/errors/ServerErrorPage';
+
 export function App() {
   return (
     <BrowserRouter>
@@ -22,23 +28,47 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Authenticated Application Shell */}
+        {/* Application Shell with Global AI Chat Widget on Every Route */}
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/resumes" element={<ResumesPage />} />
-          <Route path="/resumes/:id" element={<ResumeDetailPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/jobs/:id" element={<JobDetailPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/support" element={<SupportPage />} />
+
+          {/* Core Resume & Matching Routes - Seamless Guest Access Enabled */}
+          <Route path="/resumes" element={<ResumesPage />} />
+          <Route path="/resumes/:id" element={<ResumeDetailPage />} />
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/matches/:id" element={<MatchDetailPage />} />
           <Route path="/roadmap/:id" element={<RoadmapDetailPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Account-Specific Routes Requiring Permanent Login */}
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Dedicated Error Pages */}
+          <Route path="/500" element={<ServerErrorPage />} />
+          <Route path="/404" element={<NotFoundPage />} />
+
+          {/* Catch-all Wildcard Route to Custom 404 Page */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

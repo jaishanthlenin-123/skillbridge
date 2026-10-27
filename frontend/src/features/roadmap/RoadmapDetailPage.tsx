@@ -121,6 +121,23 @@ export const RoadmapDetailPage: React.FC = () => {
         </Link>
       </div>
 
+      {api.isGuest() && (
+        <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-indigo-400 shrink-0" />
+            <p className="text-xs text-indigo-200">
+              <strong>Guest Session:</strong> This learning roadmap is active in your current session. Register to sync your roadmap progress across all your devices.
+            </p>
+          </div>
+          <Link
+            to="/register"
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shrink-0 transition-all"
+          >
+            Save Progress
+          </Link>
+        </div>
+      )}
+
       {/* Progress Hero */}
       <div className="glass-panel p-6 rounded-2xl border border-indigo-500/20 space-y-4">
         <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BrainCircuit, Lock, Mail, User as UserIcon, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
+import { ChatWidget } from '../../components/Chat/ChatWidget';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -169,6 +170,7 @@ export const RegisterPage: React.FC = () => {
           </div>
         </div>
       </div>
+      <ChatWidget />
     </div>
   );
 };

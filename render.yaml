@@ -1,0 +1,97 @@
+# Render Blueprint Specification for SkillBridge
+# Architecture:
+# - skillbridge-db: Render Hosted PostgreSQL (Relational Data)
+# - skillbridge-api: Django REST Framework API (Python Web Service)
+# - skillbridge-ml: FastAPI ML Microservice (Sentence-Transformers Inference)
+# - skillbridge-frontend: React / Vite Static Site (Global CDN)
+
+databases:
+  - name: skillbridge-db
+    databaseName: skillbridge
+    user: skillbridge_user
+    plan: free
+    region: oregon
+
+services:
+  # ----------------------------------------------------
+  # 1. Django REST Backend API
+  # ----------------------------------------------------
+  - type: web
+    name: skillbridge-api
+    env: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py seed_skillbridge
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /api/v1/health/
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: .onrender.com,localhost,127.0.0.1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: skillbridge-db
+          property: connectionString
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: skillbridge-ml
+          property: host
+      - key: ML_SERVICE_INTERNAL_TOKEN
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://skillbridge-frontend.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://skillbridge-frontend.onrender.com,https://skillbridge-api.onrender.com
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: skillbridge
+
+  # ----------------------------------------------------
+  # 2. FastAPI ML Microservice
+  # ----------------------------------------------------
+  - type: web
+    name: skillbridge-ml
+    env: python
+    region: oregon
+    plan: free
+    rootDir: ml_service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: ML_SERVICE_INTERNAL_TOKEN
+        fromService:
+          type: web
+          name: skillbridge-api
+          envVarKey: ML_SERVICE_INTERNAL_TOKEN
+      - key: EMBEDDING_MODEL_NAME
+        value: all-MiniLM-L6-v2
+
+  # ----------------------------------------------------
+  # 3. React Vite Static Site
+  # ----------------------------------------------------
+  - type: web
+    name: skillbridge-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://skillbridge-api.onrender.com/api/v1

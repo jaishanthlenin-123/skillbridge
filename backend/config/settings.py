@@ -19,7 +19,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-skillbridge-dev-def
 
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,testserver').split(',') if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,testserver,.onrender.com').split(',') if h.strip()]
 
 # Application definition
 INSTALLED_APPS = [
@@ -37,17 +37,24 @@ INSTALLED_APPS = [
     'drf_spectacular',
     
     # SkillBridge core apps
+    'apps.core.apps.CoreConfig',
     'apps.accounts.apps.AccountsConfig',
     'apps.resumes.apps.ResumesConfig',
     'apps.jobs.apps.JobsConfig',
     'apps.matches.apps.MatchesConfig',
     'apps.roadmaps.apps.RoadmapsConfig',
     'apps.audit.apps.AuditConfig',
+    'apps.faq.apps.FAQConfig',
+    'apps.support.apps.SupportConfig',
+    'apps.assistant.apps.AssistantConfig',
+    'apps.integrations.apps.IntegrationsConfig',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'config.middleware.RequestCorrelationAndLoggingMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -55,6 +62,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Security settings for reverse proxy (Render / HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -80,25 +90,46 @@ WSGI_APPLICATION = 'config.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 
 # Database configuration
-DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+DATABASE_URL = os.getenv('DATABASE_URL', '')
+DB_ENGINE = os.getenv('DB_ENGINE', '')
+POSTGRES_DB = os.getenv('POSTGRES_DB', os.getenv('DB_NAME', 'skillbridge'))
+POSTGRES_USER = os.getenv('POSTGRES_USER', os.getenv('DB_USER', 'skillbridge_user'))
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', os.getenv('DB_PASSWORD', 'skillbridge_password'))
+POSTGRES_HOST = os.getenv('POSTGRES_HOST', os.getenv('DB_HOST', '127.0.0.1'))
+POSTGRES_PORT = os.getenv('POSTGRES_PORT', os.getenv('DB_PORT', '5432'))
 
-if 'sqlite' in DB_ENGINE or os.getenv('ENVIRONMENT') == 'testing':
+# Use DATABASE_URL if available (standard in Render), else PostgreSQL if configured, else fallback to SQLite for local dev
+if DATABASE_URL:
+    from urllib.parse import urlparse, unquote
+    _db_url = urlparse(DATABASE_URL)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _db_url.path.lstrip('/'),
+            'USER': unquote(_db_url.username or ''),
+            'PASSWORD': unquote(_db_url.password or ''),
+            'HOST': _db_url.hostname,
+            'PORT': _db_url.port or 5432,
+            'CONN_MAX_AGE': 60,
+        }
+    }
+elif 'postgresql' in DB_ENGINE or (os.getenv('POSTGRES_HOST') and not 'sqlite' in DB_ENGINE):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': POSTGRES_DB,
+            'USER': POSTGRES_USER,
+            'PASSWORD': POSTGRES_PASSWORD,
+            'HOST': POSTGRES_HOST,
+            'PORT': POSTGRES_PORT,
+            'CONN_MAX_AGE': 60,
         }
     }
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'skillbridge_db'),
-            'USER': os.getenv('DB_USER', 'skillbridge_user'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'skillbridge_password'),
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-            'CONN_MAX_AGE': 60,
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -155,8 +186,12 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',') if origin.strip()
 ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.onrender\.com$",
+    r"^http:\/\/localhost:\d+$",
+]
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',') if origin.strip()
+    origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,https://*.onrender.com').split(',') if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
 

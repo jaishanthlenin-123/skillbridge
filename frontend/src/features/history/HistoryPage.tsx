@@ -25,9 +25,9 @@ export const HistoryPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Audit Trail & Privacy History</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Activity History</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Complete, tamper-evident log of your account operations. As per our privacy policy, logs strictly exclude sensitive resume text.
+          Review your recent account activity and operations. To protect your privacy, logs never store resume text or personal details.
         </p>
       </div>
 

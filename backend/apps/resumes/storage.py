@@ -47,8 +47,12 @@ def validate_and_save_private_file(uploaded_file, user_id: str) -> dict:
         hasher.update(chunk)
     file_hash = hasher.hexdigest()
 
-    # Determine storage directory and file path
-    user_storage_dir = Path(settings.PRIVATE_STORAGE_ROOT) / str(user_id)
+    # Determine storage directory and file path (sanitized against path traversal)
+    safe_user_id = "".join(c for c in str(user_id) if c.isalnum() or c in ('-', '_'))
+    if not safe_user_id:
+        safe_user_id = "default"
+
+    user_storage_dir = Path(settings.PRIVATE_STORAGE_ROOT) / safe_user_id
     user_storage_dir.mkdir(parents=True, exist_ok=True)
 
     storage_filename = f"{file_hash}.{ext}"
@@ -60,7 +64,7 @@ def validate_and_save_private_file(uploaded_file, user_id: str) -> dict:
         for chunk in uploaded_file.chunks():
             dest_file.write(chunk)
 
-    rel_storage_key = str(Path(str(user_id)) / storage_filename)
+    rel_storage_key = str(Path(safe_user_id) / storage_filename)
     mime_type = 'application/pdf' if ext == 'pdf' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     return {
@@ -75,13 +79,16 @@ def validate_and_save_private_file(uploaded_file, user_id: str) -> dict:
 
 def delete_private_file(storage_key: str):
     """
-    Safely purges physical file from private storage disk.
+    Safely purges physical file from private storage disk with strict boundary check.
     """
     if not storage_key:
         return
     try:
-        path = Path(settings.PRIVATE_STORAGE_ROOT) / storage_key
-        if path.exists() and path.is_file():
-            os.remove(path)
+        base_dir = Path(settings.PRIVATE_STORAGE_ROOT).resolve()
+        target_path = (base_dir / storage_key).resolve()
+        # Prevent path traversal outside PRIVATE_STORAGE_ROOT
+        if base_dir in target_path.parents or base_dir == target_path.parent:
+            if target_path.exists() and target_path.is_file():
+                os.remove(target_path)
     except Exception as e:
         pass

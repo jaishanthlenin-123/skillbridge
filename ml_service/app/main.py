@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Ensure repo root is discoverable for package imports
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ml_service.app.api.endpoints import router
@@ -19,8 +27,10 @@ app.add_middleware(
 app.include_router(router)
 
 @app.get("/")
+@app.get("/health")
 def root():
     return {
+        "status": "healthy",
         "service": "SkillBridge ML Service",
         "health": "/internal/v1/health/",
         "docs": "/docs"

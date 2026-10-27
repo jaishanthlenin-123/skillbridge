@@ -54,7 +54,7 @@ export const ResumesPage: React.FC = () => {
 
     try {
       const created = await api.uploadResume(formData);
-      setUploadSuccess(`"${created.title}" successfully parsed and encrypted.`);
+      setUploadSuccess(`"${created.title}" successfully uploaded and analyzed.`);
       fetchResumes();
     } catch (err: any) {
       setUploadError(err.message || 'Failed to parse resume document.');
@@ -64,7 +64,7 @@ export const ResumesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete "${title}" and purge it from private storage?`)) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${title}"?`)) {
       return;
     }
     try {
@@ -75,12 +75,50 @@ export const ResumesPage: React.FC = () => {
     }
   };
 
+  const handleDiscardGuest = async () => {
+    if (!window.confirm('Discard your guest session and delete your temporary uploads?')) {
+      return;
+    }
+    await api.discardGuestSession();
+    setResumes([]);
+    setUploadSuccess('Guest session cleared.');
+  };
+
+  const isGuest = api.isGuest();
+
   return (
     <div className="space-y-8">
+      {isGuest && (
+        <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-indigo-400 shrink-0" />
+            <p className="text-xs text-indigo-200">
+              <strong>Guest Exploration Mode:</strong> You can upload your resume, inspect extracted skills, and run skill match analyses freely. Sign up or log in anytime to preserve your work permanently.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/register"
+              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-all"
+            >
+              Save Profile
+            </Link>
+            {resumes.length > 0 && (
+              <button
+                onClick={handleDiscardGuest}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Discard Session
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Resume Intelligence Workspace</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Resume Management</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Upload resumes in PDF or DOCX. Documents are stored privately, validated with magic byte checks, and parsed for skills.
+          Upload resumes in PDF or DOCX format (up to 10MB) to analyze your skills and match against jobs. Your files are stored securely in your private session.
         </p>
       </div>
 
@@ -113,16 +151,16 @@ export const ResumesPage: React.FC = () => {
         </div>
 
         <h3 className="text-base font-semibold text-white">
-          {uploading ? 'Parsing and extracting technical skills...' : 'Drop your resume here, or browse files'}
+          {uploading ? 'Analyzing resume skills...' : 'Drop your resume here, or click to browse'}
         </h3>
-        <p className="text-xs text-slate-400 mt-1">Supports PDF and DOCX up to 10MB • Private Encrypted Storage</p>
+        <p className="text-xs text-slate-400 mt-1">Supports PDF and DOCX up to 10MB • Private Secure Storage</p>
 
         <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-slate-500">
           <span className="flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Magic Signature Validation
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Secure file verification
           </span>
           <span>•</span>
-          <span>Automatic Section Segmentation</span>
+          <span>Automatic skill extraction</span>
         </div>
       </div>
 
@@ -191,6 +229,16 @@ export const ResumesPage: React.FC = () => {
                   >
                     {resume.parsing_status_display}
                   </span>
+
+                  {resume.parsing_status === 'COMPLETED' && (
+                    <Link
+                      to={`/matches?resume_id=${resume.id}`}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    >
+                      <span>Analyze Match</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  )}
 
                   <Link
                     to={`/resumes/${resume.id}`}

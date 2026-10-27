@@ -75,9 +75,9 @@ export const JobsPage: React.FC = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Job Library</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Explore Jobs</h2>
           <p className="text-sm text-slate-400 mt-1">
-            Store target job descriptions. The NLP engine automatically parses required and preferred technical criteria.
+            Browse available career roles or add any job description to evaluate your qualifications and identify skill gaps.
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export const JobsPage: React.FC = () => {
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/20 cursor-pointer"
         >
           <Plus className="h-4 w-4" />
-          <span>New Job Description</span>
+          <span>Add Job Description</span>
         </button>
       </div>
 
@@ -202,25 +202,36 @@ export const JobsPage: React.FC = () => {
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div className="truncate">
-                    <Link
-                      to={`/jobs/${job.id}`}
-                      className="text-sm font-semibold text-white hover:text-indigo-400 transition-colors truncate block"
-                    >
-                      {job.title}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/jobs/${job.id}`}
+                        className="text-sm font-semibold text-white hover:text-indigo-400 transition-colors truncate block"
+                      >
+                        {job.title}
+                      </Link>
+                      {job.is_sample && (
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0">
+                          Sample Job
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                       <span>{job.company_name || 'Direct Employer'}</span>
+                      {job.location && (
+                        <>
+                          <span>•</span>
+                          <span>{job.location}</span>
+                        </>
+                      )}
                       <span>•</span>
                       <span className="text-indigo-400 font-medium">
                         {job.requirements_count} requirements extracted
                       </span>
-                      <span>•</span>
-                      <span>Created {new Date(job.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <Link
                     to={`/matches?job_id=${job.id}`}
                     className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors"
@@ -237,13 +248,15 @@ export const JobsPage: React.FC = () => {
                     <Eye className="h-4 w-4" />
                   </Link>
 
-                  <button
-                    onClick={() => handleDelete(job.id, job.title)}
-                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                    title="Delete Job"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {!job.is_sample && (
+                    <button
+                      onClick={() => handleDelete(job.id, job.title)}
+                      className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Job"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
