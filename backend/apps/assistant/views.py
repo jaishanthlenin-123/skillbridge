@@ -66,12 +66,30 @@ class ChatAssistantView(views.APIView):
             response_payload['persisted_to_mongo'] = mongo_ok
             return Response(response_payload, status=status.HTTP_201_CREATED)
 
-        # 2. Retrieve recent conversation history from MongoDB
-        recent_history = get_recent_chat_history(conversation_id=conversation_id, limit=6)
+        user = request.user if request.user.is_authenticated else None
+        user_id = user.id if user else None
+        is_guest = not bool(user)
 
-        req_id = getattr(request, 'request_id', '')
-        user_id = request.user.id if request.user.is_authenticated else None
-        is_guest = not request.user.is_authenticated
+        # Resolve stable guest session identifier
+        guest_session_id = data.get('guest_session_id', '').strip()
+        if not guest_session_id:
+            guest_session_id = request.headers.get('X-Guest-Session-Id', '').strip()
+        if not guest_session_id:
+            guest_token = request.headers.get('X-Guest-Token', '').strip()
+            if guest_token:
+                guest_session_id = f"token_{guest_token[:16]}"
+            elif is_guest:
+                guest_session_id = f"guest_{conversation_id}"
+
+        # 2. Retrieve recent conversation history from MongoDB with ownership check
+        recent_history = get_recent_chat_history(
+            conversation_id=conversation_id,
+            limit=6,
+            user_id=user_id,
+            guest_session_id=guest_session_id if is_guest else None
+        )
+
+        req_id = getattr(request, 'request_id', '') or f"req_{uuid.uuid4().hex[:12]}"
 
         # 3. Log incoming user message
         mongo_user_ok = log_chat_message(
@@ -80,6 +98,7 @@ class ChatAssistantView(views.APIView):
             content=message,
             metadata={
                 'user_id': user_id,
+                'guest_session_id': guest_session_id if is_guest else None,
                 'is_guest': is_guest,
                 'request_id': req_id,
             }
@@ -95,30 +114,41 @@ class ChatAssistantView(views.APIView):
             conversation_history=recent_history
         )
 
-        # 6. Log Assistant message to MongoDB
-        mongo_assistant_ok = log_chat_message(
-            conversation_id=conversation_id,
-            role='assistant',
-            content=llm_result['answer'],
-            metadata={
-                'mode': llm_result['mode'],
-                'model': llm_result['model'],
-                'attempts': llm_result.get('attempts', 1),
-                'user_id': user_id,
-                'is_guest': is_guest,
-                'request_id': req_id,
-            }
-        )
+        # 6. Log Assistant message only if generation succeeded (do not log fallback as real AI response)
+        is_generation_successful = not llm_result.get('all_failed', False) and llm_result.get('mode') != 'all_models_unavailable'
+
+        mongo_assistant_ok = False
+        if is_generation_successful:
+            mongo_assistant_ok = log_chat_message(
+                conversation_id=conversation_id,
+                role='assistant',
+                content=llm_result['answer'],
+                metadata={
+                    'mode': llm_result['mode'],
+                    'model': llm_result['model'],
+                    'attempts': llm_result.get('attempts', 1),
+                    'user_id': user_id,
+                    'guest_session_id': guest_session_id if is_guest else None,
+                    'is_guest': is_guest,
+                    'request_id': req_id,
+                }
+            )
+
+        # Both writes must succeed when generation succeeds, or user write must succeed if generation failed
+        persisted_all = bool(mongo_user_ok and (mongo_assistant_ok or not is_generation_successful))
 
         return Response({
             'conversation_id': conversation_id,
+            'guest_session_id': guest_session_id if is_guest else None,
             'answer': llm_result['answer'],
             'mode': llm_result['mode'],
             'model': llm_result['model'],
             'attempts': llm_result.get('attempts', 1),
             'grounded_faqs': llm_result.get('grounded_faqs', []),
             'can_create_ticket': llm_result.get('can_create_ticket', False),
-            'persisted_to_mongo': bool(mongo_assistant_ok),
+            'persisted_to_mongo': persisted_all,
+            'persisted_user_message': bool(mongo_user_ok),
+            'persisted_assistant_message': bool(mongo_assistant_ok),
         }, status=status.HTTP_200_OK)
 
 class ChatFeedbackView(views.APIView):

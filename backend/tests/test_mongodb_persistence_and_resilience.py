@@ -65,6 +65,25 @@ class MockMongoCollection:
         cursor_mock.__iter__.return_value = iter(results)
         return cursor_mock
 
+    def find_one(self, filter_query, projection=None):
+        for doc in self.docs:
+            match = True
+            for k, v in filter_query.items():
+                if "." in k:
+                    parts = k.split(".")
+                    sub = doc
+                    for p in parts:
+                        sub = sub.get(p) if isinstance(sub, dict) else None
+                    if sub != v:
+                        match = False
+                        break
+                elif doc.get(k) != v:
+                    match = False
+                    break
+            if match:
+                return dict(doc)
+        return None
+
     def count_documents(self, filter_query):
         return len(self.docs)
 
@@ -110,13 +129,111 @@ class TestMongoDBPersistenceAndResilience:
                 conversation_id=conv_id,
                 role='assistant',
                 content='Hello user, how can I help?',
-                metadata={'mode': 'gemini_generated', 'model': 'gemini-3-flash-preview'}
+                metadata={'mode': 'gemini_generated', 'model': 'gemini-3.1-flash-lite'}
             )
             assert asst_saved is True
             assert mock_db.chat_conversations.docs[0]["message_count"] == 2
             assert len(mock_db.chat_messages.docs) == 2
             assert mock_db.chat_messages.docs[1]["role"] == 'assistant'
             assert mock_db.chat_messages.docs[1]["conversation_id"] == conv_id
+
+    def test_guest_workflow_persistence_and_isolation(self):
+        """Test guest message persistence, guest_session_id tracking, and cross-session isolation."""
+        mock_db = MockMongoDB("bridgeskill")
+        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+            conv_guest = "conv_guest_001"
+            session_a = "guest_session_aaa"
+            session_b = "guest_session_bbb"
+
+            # 1. Guest A initiates conversation
+            saved = log_chat_message(
+                conversation_id=conv_guest,
+                role='user',
+                content='What skills are needed for Python backend?',
+                metadata={'guest_session_id': session_a, 'is_guest': True}
+            )
+            assert saved is True
+            conv_doc = mock_db.chat_conversations.docs[0]
+            assert conv_doc["guest_session_id"] == session_a
+            assert conv_doc["is_guest"] is True
+
+            # Assistant response for Guest A
+            log_chat_message(
+                conversation_id=conv_guest,
+                role='assistant',
+                content='You should learn Python, Django, REST APIs, and PostgreSQL.',
+                metadata={'guest_session_id': session_a, 'is_guest': True}
+            )
+
+            # 2. Guest A can retrieve conversation history
+            hist_a = get_recent_chat_history(conv_guest, limit=6, guest_session_id=session_a)
+            assert len(hist_a) == 2
+            assert hist_a[0]["role"] == "user"
+            assert hist_a[1]["role"] == "assistant"
+
+            # 3. Guest B cannot access Guest A's conversation history
+            hist_b = get_recent_chat_history(conv_guest, limit=6, guest_session_id=session_b)
+            assert len(hist_b) == 0
+
+    def test_guest_cannot_read_authenticated_user_conversation(self):
+        """Test security barrier preventing guests from reading user conversations."""
+        mock_db = MockMongoDB("bridgeskill")
+        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+            conv_user = "conv_user_private_999"
+
+            # Authenticated user creates conversation
+            log_chat_message(
+                conversation_id=conv_user,
+                role='user',
+                content='My private account resume question',
+                metadata={'user_id': 101, 'is_guest': False}
+            )
+            log_chat_message(
+                conversation_id=conv_user,
+                role='assistant',
+                content='Private advice for user 101.',
+                metadata={'user_id': 101, 'is_guest': False}
+            )
+
+            # Owner can read
+            user_hist = get_recent_chat_history(conv_user, limit=6, user_id=101)
+            assert len(user_hist) == 2
+
+            # Guest cannot read
+            guest_hist = get_recent_chat_history(conv_user, limit=6, user_id=None, guest_session_id="guest_unauthorized")
+            assert len(guest_hist) == 0
+
+            # Another user cannot read
+            other_user_hist = get_recent_chat_history(conv_user, limit=6, user_id=202)
+            assert len(other_user_hist) == 0
+
+    def test_message_deduplication_on_retry(self):
+        """Test that retrying a request with the same request_id does not duplicate records."""
+        mock_db = MockMongoDB("bridgeskill")
+        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+            conv_id = "conv_dedup_001"
+            req_id = "req_retry_test_123"
+
+            # First attempt
+            ok1 = log_chat_message(
+                conversation_id=conv_id,
+                role='user',
+                content='Tell me about Docker',
+                metadata={'request_id': req_id}
+            )
+            assert ok1 is True
+            assert len(mock_db.chat_messages.docs) == 1
+
+            # Second attempt with same request_id (retry)
+            ok2 = log_chat_message(
+                conversation_id=conv_id,
+                role='user',
+                content='Tell me about Docker',
+                metadata={'request_id': req_id}
+            )
+            assert ok2 is True
+            # Did NOT insert duplicate!
+            assert len(mock_db.chat_messages.docs) == 1
 
     def test_conversation_history_retrieval(self):
         mock_db = MockMongoDB("bridgeskill")
@@ -167,6 +284,28 @@ class TestMongoDBPersistenceAndResilience:
                 assert db2 is None
                 assert mock_client_cls.call_count == 1  # Did NOT call MongoClient again!
                 assert elapsed_2 < 0.05  # Instant return
+
+    def test_circuit_breaker_recovers_after_cooldown(self):
+        """Test that after cooldown window expires, new connection attempt succeeds."""
+        reset_mongo_connection()
+        mock_client = MagicMock()
+        mock_client.admin.command.return_value = {"ok": 1}
+        mock_db = MagicMock()
+        mock_client.__getitem__.return_value = mock_db
+
+        with patch('os.getenv', side_effect=lambda k, d='': 'mongodb+srv://fake@test.mongodb.net/' if k == 'MONGODB_URI' else d):
+            with patch('pymongo.MongoClient') as mock_client_cls:
+                # First: fail
+                mock_client_cls.side_effect = Exception("Connection refused")
+                assert get_mongo_db() is None
+
+                # Second: recover by resetting or waiting past cooldown
+                reset_mongo_connection()
+                mock_client_cls.side_effect = None
+                mock_client_cls.return_value = mock_client
+                recovered_db = get_mongo_db()
+                assert recovered_db is not None
+                assert recovered_db == mock_db
 
     def test_check_mongo_health_reporting(self):
         mock_db = MockMongoDB("bridgeskill")

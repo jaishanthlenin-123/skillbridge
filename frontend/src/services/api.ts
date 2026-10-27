@@ -285,12 +285,14 @@ export const api = {
   sendAssistantChat: (data: {
     message: string;
     conversation_id?: string;
+    guest_session_id?: string;
     action?: string;
     email?: string;
     subject?: string;
     description?: string;
   }) => request<{
     conversation_id: string;
+    guest_session_id?: string;
     answer: string;
     mode: string;
     model?: string;
@@ -300,6 +302,8 @@ export const api = {
     ticket_number?: string;
     ticket_id?: string;
     persisted_to_mongo?: boolean;
+    persisted_user_message?: boolean;
+    persisted_assistant_message?: boolean;
   }>('/assistant/chat/', { method: 'POST', body: JSON.stringify(data) }),
   sendAssistantFeedback: (data: { conversation_id: string; rating: number; comment?: string }) =>
     request<{ message: string; conversation_id: string; persisted_to_mongo: boolean }>(

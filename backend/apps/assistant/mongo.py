@@ -138,8 +138,26 @@ def log_chat_message(
         }
         if "user_id" in safe_meta and safe_meta["user_id"]:
             conversation_update["$set"]["user_id"] = str(safe_meta["user_id"])
+        if "guest_session_id" in safe_meta and safe_meta["guest_session_id"]:
+            conversation_update["$set"]["guest_session_id"] = str(safe_meta["guest_session_id"])
         if "is_guest" in safe_meta:
             conversation_update["$set"]["is_guest"] = bool(safe_meta["is_guest"])
+
+        # Deduplicate write if request_id is supplied and message already exists
+        req_id = safe_meta.get("request_id")
+        find_one_fn = getattr(db.chat_messages, "find_one", None)
+        if req_id and callable(find_one_fn):
+            try:
+                existing = db.chat_messages.find_one({
+                    "conversation_id": conversation_id,
+                    "role": role,
+                    "metadata.request_id": req_id
+                })
+                if existing:
+                    logger.info(f"Deduplicated chat message for {conversation_id} ({role}, {req_id})")
+                    return True
+            except Exception:
+                pass
 
         db.chat_conversations.update_one(
             {"conversation_id": conversation_id},
@@ -191,9 +209,15 @@ def save_chat_feedback(
         logger.warning(f"Failed to record feedback to MongoDB: {type(e).__name__}")
         return False
 
-def get_recent_chat_history(conversation_id: str, limit: int = 6) -> list[dict[str, str]]:
+def get_recent_chat_history(
+    conversation_id: str,
+    limit: int = 6,
+    user_id: Optional[Any] = None,
+    guest_session_id: Optional[str] = None
+) -> list[dict[str, str]]:
     """
     Retrieves the most recent messages for a conversation from MongoDB.
+    Validates conversation ownership to prevent cross-account or guest leakage.
     Returns a list of dicts with role and content, ordered chronologically.
     """
     db = get_mongo_db()
@@ -201,6 +225,26 @@ def get_recent_chat_history(conversation_id: str, limit: int = 6) -> list[dict[s
         return []
 
     try:
+        # Validate conversation ownership if conversation document exists
+        conv_find_one = getattr(db.chat_conversations, "find_one", None)
+        if callable(conv_find_one):
+            conv = db.chat_conversations.find_one({"conversation_id": conversation_id})
+            if conv:
+                conv_user_id = conv.get("user_id")
+                conv_guest_id = conv.get("guest_session_id")
+
+                # If conversation belongs to an authenticated user, reject unauthorized requests
+                if conv_user_id:
+                    if not user_id or str(user_id) != str(conv_user_id):
+                        logger.warning(f"Ownership check failed for conv {conversation_id}: request user {user_id} != owner {conv_user_id}")
+                        return []
+
+                # If conversation belongs to a guest, ensure another guest cannot cross-read if session id is specified
+                elif conv_guest_id and guest_session_id:
+                    if str(conv_guest_id) != str(guest_session_id):
+                        logger.warning(f"Guest isolation check failed for conv {conversation_id}: session {guest_session_id} != owner {conv_guest_id}")
+                        return []
+
         cursor = db.chat_messages.find(
             {"conversation_id": conversation_id},
             {"_id": 0, "role": 1, "content": 1}

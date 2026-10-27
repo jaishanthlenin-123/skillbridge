@@ -37,6 +37,14 @@ export const ChatWidget: React.FC = () => {
     return newId;
   });
 
+  const [guestSessionId] = useState<string>(() => {
+    const saved = sessionStorage.getItem('skillbridge_guest_session_id');
+    if (saved) return saved;
+    const newId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now().toString(36)}`;
+    sessionStorage.setItem('skillbridge_guest_session_id', newId);
+    return newId;
+  });
+
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, number>>({});
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [ticketEmail, setTicketEmail] = useState('');
@@ -101,7 +109,13 @@ export const ChatWidget: React.FC = () => {
       const resp = await api.sendAssistantChat({
         message: textToSend.trim(),
         conversation_id: conversationId,
+        guest_session_id: guestSessionId,
       });
+
+      if (resp.conversation_id && resp.conversation_id !== conversationId) {
+        setConversationId(resp.conversation_id);
+        sessionStorage.setItem('skillbridge_conv_id', resp.conversation_id);
+      }
 
       const assistantMsg: ChatMessage = {
         role: 'assistant',
