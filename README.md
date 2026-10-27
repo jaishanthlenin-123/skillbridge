@@ -323,14 +323,39 @@ cd frontend && npm run build
 
 ---
 
-## 12. Deployment Status & Live Links
+## 12. Production Deployment & Live Links
 
-- **Local Development Deployment (Active & Verified)**:
-  - **Frontend Application**: `http://localhost:5173/`
-  - **Backend API**: `http://127.0.0.1:8080/api/v1/`
-  - **ML Microservice**: `http://127.0.0.1:8001/`
-- **Public Cloud HTTPS URL**: *Local development deployment currently active. Public HTTPS deployment pending final cloud host provisioning (AWS/Render/GCP).*
-- **GitHub Repository**: *Git repository initialized locally; remote origin pending configuration by repository owner.*
+### Architecture & Service Breakdown (Render Blueprint `render.yaml`)
+
+SkillBridge is configured for automated deployment on [Render](https://render.com) using Infrastructure-as-Code via `render.yaml`:
+
+| Service | Type | Environment | Internal Name | Public Production URL |
+|---|---|---|---|---|
+| **Frontend** | Static Site | Node (Vite build) | `skillbridge-frontend` | `https://skillbridge-frontend.onrender.com` |
+| **Backend** | Web Service | Python 3.11 (Gunicorn + Whitenoise) | `skillbridge-api` | `https://skillbridge-api.onrender.com` |
+| **ML Microservice** | Web Service | Python 3.11 (Uvicorn + FastAPI) | `skillbridge-ml` | `https://skillbridge-ml.onrender.com` |
+| **Database** | Managed Database | PostgreSQL 15 | `skillbridge-db` | Internal connection via `DATABASE_URL` |
+
+### Private Resume Storage in Production
+- Resumes are stored strictly under `private_storage/users/<user_id>/` outside the public static and media roots.
+- On Render's standard web service, storage is local to the container instance.
+- **Production Recommendation**: For multi-instance horizontal scaling and persistence across major container redeployments, connect a Render Persistent Disk or S3-compatible object storage (AWS S3 / Cloudflare R2).
+
+### Deployment Status
+- **GitHub Target Repository**: [`https://github.com/jaishanthlenin-123/skillbridge`](https://github.com/jaishanthlenin-123/skillbridge)
+- **Local Application (Fully Verified & Operational)**:
+  - Frontend: `http://localhost:5173/`
+  - Backend API: `http://127.0.0.1:8080/api/v1/`
+  - ML Microservice: `http://127.0.0.1:8001/`
+- **Render Cloud HTTPS Deployment**: *Ready for automated provisioning via `render.yaml` Blueprint once code is pushed to GitHub.*
+
+### One-Click Render Deployment Instructions
+1. Create empty repository `skillbridge` on GitHub: [https://github.com/new](https://github.com/new).
+2. Push local commits: `git push -u origin master`.
+3. Go to [Render Dashboard](https://dashboard.render.com) -> Click **New +** -> **Blueprint**.
+4. Select repository `jaishanthlenin-123/skillbridge`.
+5. Enter manual secrets (`GEMINI_API_KEY` and `MONGODB_URI`).
+6. Click **Apply**. Render will automatically provision PostgreSQL, launch the ML service, run Django migrations & seeds, and build the Vite frontend with automatic HTTPS.
 
 ---
 
