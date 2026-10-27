@@ -108,3 +108,25 @@ def save_chat_feedback(
     except Exception as e:
         logger.warning(f"Failed to record feedback to MongoDB: {e}")
         return False
+
+def get_recent_chat_history(conversation_id: str, limit: int = 6) -> list[dict[str, str]]:
+    """
+    Retrieves the most recent messages for a conversation from MongoDB.
+    Returns a list of dicts with role and content, ordered chronologically.
+    """
+    db = get_mongo_db()
+    if db is None or not conversation_id:
+        return []
+
+    try:
+        cursor = db.chat_messages.find(
+            {"conversation_id": conversation_id},
+            {"_id": 0, "role": 1, "content": 1}
+        ).sort("created_at", -1).limit(limit)
+
+        messages = list(cursor)
+        messages.reverse()
+        return messages
+    except Exception as e:
+        logger.warning(f"Failed to retrieve chat history from MongoDB: {e}")
+        return []

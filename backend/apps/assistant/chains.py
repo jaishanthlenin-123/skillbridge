@@ -1,5 +1,5 @@
 import os
-import re
+import time
 import logging
 import requests
 from typing import List, Dict, Any, Optional
@@ -7,57 +7,96 @@ from config.errors import ERROR_REGISTRY
 
 logger = logging.getLogger('skillbridge.assistant.chains')
 
-SYSTEM_PROMPT = """You are the official SkillBridge AI Career Assistant.
-SkillBridge is an intelligent resume analysis and career development platform that extracts technical skills, computes explainable job-match scores, and generates tailored learning roadmaps.
+SYSTEM_INSTRUCTION_TEXT = (
+    "You are the official SkillBridge AI Career Assistant.\n"
+    "SkillBridge is an AI-powered resume intelligence and career development platform that extracts skills, "
+    "computes transparent match scores against job descriptions, and generates milestone-based learning roadmaps.\n\n"
+    "Guidelines:\n"
+    "1. Answer the user's questions in a helpful, conversational, and direct manner.\n"
+    "2. When SkillBridge verified documentation or error registry context is provided below, ground your response in that documentation. "
+    "Do NOT hallucinate nonexistent platform routes, pricing tiers, or features.\n"
+    "3. For general career, resume, and computer science / technical topics (e.g. Machine Learning, algorithms, gradient descent, "
+    "system design), provide high-quality, professional, and practical explanations with clear examples.\n"
+    "4. Maintain a warm, encouraging, and professional tone."
+)
 
-Provide professional, encouraging, and actionable career advice. Where appropriate, refer to SkillBridge's resume upload, job match evaluation, and learning roadmaps."""
+def build_gemini_payload(
+    query: str,
+    faqs: List[Dict[str, Any]],
+    conversation_history: Optional[List[Dict[str, str]]] = None
+) -> Dict[str, Any]:
+    """
+    Constructs the REST payload for Gemini v1beta generateContent
+    including system instruction, documentation context, multi-turn history, and the user query.
+    """
+    # 1. Assemble supporting documentation context
+    doc_sections = []
+    if faqs:
+        faq_lines = ["--- Verified SkillBridge Documentation ---"]
+        for f in faqs[:3]:
+            cat = f.get('category', 'Platform')
+            faq_lines.append(f"[{cat}] Q: {f['question']}\nA: {f['answer']}")
+        doc_sections.append("\n".join(faq_lines))
 
-# Curated domain knowledge for technical roles when external LLM is rate-limited or offline
-DOMAIN_ROLE_KNOWLEDGE = {
-    'machine learning': (
-        "**Machine Learning Engineer — Core Competencies & Skills:**\n\n"
-        "• **Core Languages & Math:** Python, SQL, Linear Algebra, Calculus, Probability & Statistics\n"
-        "• **ML Frameworks:** PyTorch, TensorFlow, Scikit-Learn, XGBoost, Pandas, NumPy\n"
-        "• **MLOps & Deployment:** Docker, FastAPI/Flask, MLflow, AWS SageMaker or GCP Vertex AI, CI/CD pipelines\n"
-        "• **Resume Recommendation:** Emphasize end-to-end model development, quantifiable performance metrics (e.g., latency reduction, F1 score improvement), and production deployment experience.\n\n"
-        "💡 *Tip:* Upload your resume to SkillBridge and check your match score against our Machine Learning Engineer job postings!"
-    ),
-    'data scientist': (
-        "**Data Scientist — Core Competencies & Skills:**\n\n"
-        "• **Analytics & Modeling:** Python/R, Advanced SQL, A/B Testing, Feature Engineering, Predictive Modeling\n"
-        "• **Data Visualization:** Tableau, PowerBI, Matplotlib, Seaborn\n"
-        "• **Big Data & Cloud:** Spark, Databricks, Snowflake, BigQuery\n"
-        "• **Resume Recommendation:** Highlight business impact, experiment design, data pipelines, and storytelling through metrics."
-    ),
-    'software engineer': (
-        "**Software Engineer — Core Competencies & Skills:**\n\n"
-        "• **Core Foundations:** Data Structures, Algorithms, System Design, OOP & Functional Programming\n"
-        "• **Backend & Systems:** Python, Go, Java, or C++, REST/gRPC APIs, PostgreSQL/MySQL, Redis\n"
-        "• **Engineering Practices:** Git, Automated Unit/Integration Testing, CI/CD, Containerization (Docker)\n"
-        "• **Resume Recommendation:** Showcase scalable systems, clean architectural patterns, code quality, and peer review contributions."
-    ),
-    'frontend': (
-        "**Frontend Engineer — Core Competencies & Skills:**\n\n"
-        "• **Modern Web Stack:** TypeScript, React, Next.js or Vite, modern CSS / Tailwind\n"
-        "• **Client State & Performance:** React Query, Redux/Zustand, responsive design, Core Web Vitals optimization\n"
-        "• **Testing & APIs:** Jest/Vitest, React Testing Library, RESTful API and WebSocket integration\n"
-        "• **Resume Recommendation:** Provide links to live projects or GitHub repositories demonstrating polished UI and accessibility standards."
-    ),
-    'full stack': (
-        "**Full Stack Engineer — Core Competencies & Skills:**\n\n"
-        "• **Frontend:** React, TypeScript, modern UI layouts and responsive components\n"
-        "• **Backend & DB:** Python/Django or Node.js, relational databases (PostgreSQL), RESTful API design\n"
-        "• **DevOps & Infrastructure:** Docker, cloud deployment (Render, AWS), Git version control\n"
-        "• **Resume Recommendation:** Highlight end-to-end features built from database design to client interface."
-    ),
-    'devops': (
-        "**DevOps / Cloud Engineer — Core Competencies & Skills:**\n\n"
-        "• **Infrastructure as Code:** Terraform, Ansible, CloudFormation\n"
-        "• **Containers & Orchestration:** Docker, Kubernetes, Helm\n"
-        "• **Cloud Platforms & CI/CD:** AWS, GCP, GitHub Actions, GitLab CI, Prometheus, Grafana\n"
-        "• **Resume Recommendation:** Highlight uptime improvements, automated deployment pipelines, and cost optimizations."
-    ),
-}
+    # Error code context if user explicitly mentions an error
+    for code, info in ERROR_REGISTRY.items():
+        if code.lower() in query.lower():
+            doc_sections.append(
+                f"--- Error Code Documentation: {code} ({info['title']}) ---\n"
+                f"Meaning: {info['meaning']}\n"
+                f"Typical Cause: {info['typical_cause']}\n"
+                f"Explanation: {info['explanation']}\n"
+                f"Recommended Recovery: {info['recovery_action']}"
+            )
+
+    system_instruction_full = SYSTEM_INSTRUCTION_TEXT
+    if doc_sections:
+        system_instruction_full += "\n\n" + "\n\n".join(doc_sections)
+
+    # 2. Build multi-turn history contents
+    contents: List[Dict[str, Any]] = []
+
+    # Map previous turns ensuring proper roles (user vs model)
+    if conversation_history:
+        for msg in conversation_history[-6:]:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '').strip()
+            if not content:
+                continue
+            gemini_role = 'model' if role == 'assistant' else 'user'
+            # Prevent consecutive duplicate roles if any exist in history
+            if contents and contents[-1]['role'] == gemini_role:
+                contents[-1]['parts'][0]['text'] += f"\n{content}"
+            else:
+                contents.append({
+                    'role': gemini_role,
+                    'parts': [{'text': content}]
+                })
+
+    # Append current user prompt
+    if contents and contents[-1]['role'] == 'user':
+        contents[-1]['parts'][0]['text'] += f"\n{query}"
+    else:
+        contents.append({
+            'role': 'user',
+            'parts': [{'text': query}]
+        })
+
+    payload: Dict[str, Any] = {
+        'contents': contents,
+        'generationConfig': {
+            'temperature': 0.6,
+            'maxOutputTokens': 800,
+        }
+    }
+
+    # Add system_instruction to top-level payload
+    payload['system_instruction'] = {
+        'parts': [{'text': system_instruction_full}]
+    }
+
+    return payload
+
 
 def generate_assistant_response(
     query: str,
@@ -65,149 +104,187 @@ def generate_assistant_response(
     conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
     """
-    Synthesizes an answer using:
-    1. Conversational greetings and self-introduction
-    2. Direct Error Registry resolution for system codes (e.g. SB-1001, 404, 500)
-    3. Direct PostgreSQL FAQ exact/high-confidence matches
-    4. Google Gemini REST API with strict 5-second timeout and HTTP fallback
-    5. Domain-grounded career intelligence & support ticket escalation
+    Executes model inference via Google Gemini REST API.
+    Does not use hardcoded answers, dictionary lookups, or unrelated FAQ routers.
+    Returns the real model response or an explicit, safe service error.
     """
-    clean_query = query.lower().strip().rstrip('!?.')
+    start_time = time.time()
+    logger.info(f"Career Assistant query received (length: {len(query)})")
 
-    # 1. Immediate Conversational Greeting & Introduction
-    GREETINGS = {
-        'hi', 'hello', 'hey', 'greetings', 'good morning', 'good afternoon',
-        'good evening', 'who are you', 'what can you do', 'help', 'start',
-        'what is skillbridge', 'about'
-    }
-    is_name_intro = bool(re.match(r'^(my name is|i am|i\'m|call me)\s+\w+', clean_query))
+    api_key = os.getenv('GEMINI_API_KEY', '').strip()
+    model_name = os.getenv('GEMINI_MODEL', 'gemini-3.1-flash-lite-preview').strip()
+    timeout_sec = float(os.getenv('GEMINI_TIMEOUT_SECONDS', '20.0'))
 
-    if clean_query in GREETINGS or clean_query.startswith(('hi ', 'hello ', 'hey ')) or is_name_intro:
-        greeting_prefix = "Hello! Nice to meet you! " if is_name_intro else "Hello! "
+    # Validate configuration
+    if not api_key:
+        logger.warning("Gemini API request skipped: GEMINI_API_KEY environment variable is not configured.")
         return {
             'answer': (
-                f"{greeting_prefix}I am your SkillBridge AI Career Assistant.\n\n"
-                "I can help you with:\n"
-                "• **Resume Review:** Upload your resume to extract skills and verify parsing\n"
-                "• **Job Match Analysis:** Compare your qualifications against target job descriptions\n"
-                "• **Skill Roadmaps:** Receive step-by-step milestones to bridge technical gaps\n"
-                "• **Platform & Troubleshooting:** Diagnose error codes or answer questions\n\n"
-                "What career goals or questions can I assist you with today?"
+                "⚠️ **Career Assistant AI is Not Configured**\n\n"
+                "The `GEMINI_API_KEY` environment variable has not been set in the deployment configuration. "
+                "Please configure a valid Google Gemini API key in your Render service environment variables."
             ),
-            'mode': 'conversational_greeting',
-            'model': 'skillbridge-assistant',
+            'mode': 'service_unavailable',
+            'model': 'none',
+            'can_create_ticket': True,
             'grounded_faqs': [],
-            'can_create_ticket': False,
         }
 
-    # 2. Direct Error Code Resolution (SB-1001, 400, 401, 403, 404, 429, 500, 503)
-    for code, info in ERROR_REGISTRY.items():
-        if code.lower() in clean_query:
-            return {
-                'answer': (
-                    f"**Error {code} — {info['title']}**\n\n"
-                    f"{info['explanation']}\n\n"
-                    f"**Why this happens:** {info['typical_cause']}\n\n"
-                    f"**Recommended Action:** {info['recovery_action']}"
-                ),
-                'mode': 'deterministic_error_registry',
-                'model': 'local-error-registry',
-                'grounded_faqs': [],
-                'can_create_ticket': True,
-            }
+    logger.info(f"Selected Gemini model: {model_name}")
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+    payload = build_gemini_payload(query, faqs, conversation_history)
 
-    # 3. High-Confidence PostgreSQL FAQ Match (score >= 8.0)
-    if faqs and faqs[0]['relevance_score'] >= 8.0:
-        top_faq = faqs[0]
-        other_matches = [f"• {f['question']}" for f in faqs[1:3]]
-        extras = f"\n\n**Related Knowledge Base Articles:**\n" + "\n".join(other_matches) if other_matches else ""
-        return {
-            'answer': f"{top_faq['answer']}{extras}",
-            'mode': 'deterministic_sql_faq',
-            'model': 'postgres-retrieval',
-            'grounded_faqs': [top_faq['id']],
-            'can_create_ticket': False,
-        }
+    logger.info(f"Gemini request started: model={model_name}, timeout={timeout_sec}s")
 
-    # 4. Attempt Google Gemini via Direct HTTP REST API
-    api_key = os.getenv('GEMINI_API_KEY', '').strip()
-    model_name = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash').strip()
+    last_error_category = 'UNKNOWN'
+    last_status_code = None
 
-    faq_context_lines = []
-    for f in faqs[:3]:
-        faq_context_lines.append(f"Q: {f['question']}\nA: {f['answer']}")
-    faq_context = "\n\n".join(faq_context_lines) if faq_context_lines else "None."
-
-    if api_key:
+    # Bounded retry: up to 2 attempts for transient 503 or transient read timeouts
+    for attempt in range(2):
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-            prompt_content = (
-                f"{SYSTEM_PROMPT}\n\n"
-                f"Reference FAQs:\n{faq_context}\n\n"
-                f"User Question: {query}\n\n"
-                "Provide a concise, helpful, and professional response:"
+            resp = requests.post(
+                api_url,
+                json=payload,
+                headers={'Content-Type': 'application/json'},
+                timeout=timeout_sec
             )
-            payload = {
-                "contents": [{"parts": [{"text": prompt_content}]}],
-                "generationConfig": {
-                    "temperature": 0.4,
-                    "maxOutputTokens": 600,
-                }
-            }
-            timeout_sec = float(os.getenv('GEMINI_TIMEOUT_SECONDS', '5.0'))
-            r = requests.post(url, json=payload, timeout=timeout_sec)
+            elapsed = time.time() - start_time
+            last_status_code = resp.status_code
 
-            if r.status_code == 200:
-                res_json = r.json()
-                candidates = res_json.get('candidates', [])
+            # 1. Success: HTTP 200 OK
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get('candidates', [])
                 if candidates:
                     parts = candidates[0].get('content', {}).get('parts', [])
                     if parts and parts[0].get('text'):
                         answer_text = parts[0]['text'].strip()
+                        logger.info(
+                            f"Gemini response received and parsed in {elapsed:.2f}s "
+                            f"(status: 200, length: {len(answer_text)})"
+                        )
                         return {
                             'answer': answer_text,
-                            'mode': 'gemini_llm',
+                            'mode': 'gemini_generated',
                             'model': model_name,
-                            'grounded_faqs': [f['id'] for f in faqs],
+                            'grounded_faqs': [f['id'] for f in faqs] if faqs else [],
                             'can_create_ticket': False,
                         }
-            else:
-                logger.warning(f"Gemini API returned HTTP {r.status_code}: {r.text[:120]}")
-        except Exception as e:
-            logger.warning(f"Gemini API request failed or timed out ({type(e).__name__}): {e}")
 
-    # 5. Domain Knowledge Grounding for Career and Role Inquiries
-    for role_key, role_text in DOMAIN_ROLE_KNOWLEDGE.items():
-        if role_key in clean_query:
+                logger.warning(f"Gemini returned 200 OK but response candidates were empty in {elapsed:.2f}s: {data}")
+                last_error_category = 'EMPTY_RESPONSE'
+                break
+
+            # 2. Rate Limit / Quota Exceeded: HTTP 429
+            if resp.status_code == 429:
+                logger.warning(f"Gemini request failed in {elapsed:.2f}s: status=429 (QUOTA_EXHAUSTED)")
+                return {
+                    'answer': (
+                        "⚠️ **Gemini AI Quota Exceeded (HTTP 429)**\n\n"
+                        f"The configured model `{model_name}` has exceeded its daily free-tier request quota on Google AI Studio. "
+                        "Google restricts free-tier requests per project per day.\n\n"
+                        "**Resolution:**\n"
+                        "• Check your current quota and usage at [Google AI Studio Rate Limits](https://aistudio.google.com/)\n"
+                        "• Switch to an available model (such as `gemini-3.1-flash-lite-preview`) or add billing credits in Google Cloud Console."
+                    ),
+                    'mode': 'service_unavailable',
+                    'model': model_name,
+                    'can_create_ticket': True,
+                    'grounded_faqs': [],
+                }
+
+            # 3. Model High Demand / Overloaded: HTTP 503
+            if resp.status_code == 503:
+                logger.warning(f"Gemini request failed in {elapsed:.2f}s: status=503 (MODEL_OVERLOADED)")
+                if attempt == 0:
+                    time.sleep(1.5)
+                    continue
+                return {
+                    'answer': (
+                        "⚠️ **AI Service Temporarily Overloaded (HTTP 503)**\n\n"
+                        f"The Gemini model `{model_name}` is currently experiencing high demand upstream at Google. "
+                        "Spikes in demand are temporary. Please retry your question in a few moments."
+                    ),
+                    'mode': 'service_unavailable',
+                    'model': model_name,
+                    'can_create_ticket': False,
+                    'grounded_faqs': [],
+                }
+
+            # 4. Model Not Found / Deprecated: HTTP 404
+            if resp.status_code == 404:
+                logger.error(f"Gemini request failed in {elapsed:.2f}s: status=404 (MODEL_NOT_FOUND)")
+                return {
+                    'answer': (
+                        "⚠️ **Configured Gemini Model Not Found (HTTP 404)**\n\n"
+                        f"The model identifier `{model_name}` is not recognized or has been deprecated by Google. "
+                        "Please update `GEMINI_MODEL` in your Render service environment variables."
+                    ),
+                    'mode': 'service_unavailable',
+                    'model': model_name,
+                    'can_create_ticket': True,
+                    'grounded_faqs': [],
+                }
+
+            # 5. Invalid Key / Unauthorized: HTTP 400, 401, 403
+            if resp.status_code in (400, 401, 403):
+                logger.error(f"Gemini request failed in {elapsed:.2f}s: status={resp.status_code} (AUTH_ERROR)")
+                return {
+                    'answer Minister': (
+                        f"⚠️ **Gemini API Authorization Error (HTTP {resp.status_code})**\n\n"
+                        "The configured `GEMINI_API_KEY` was rejected by Google AI Studio. "
+                        "Please verify that your API key is active and correctly entered in Render."
+                    ),
+                    'answer': (
+                        f"⚠️ **Gemini API Authorization Error (HTTP {resp.status_code})**\n\n"
+                        "The configured `GEMINI_API_KEY` was rejected by Google AI Studio. "
+                        "Please verify that your API key is active and correctly entered in Render."
+                    ),
+                    'mode': 'service_unavailable',
+                    'model': model_name,
+                    'can_create_ticket': True,
+                    'grounded_faqs': [],
+                }
+
+            # Other HTTP errors
+            logger.warning(f"Gemini request failed in {elapsed:.2f}s: status={resp.status_code} (HTTP_ERROR)")
+            last_error_category = f'HTTP_{resp.status_code}'
+
+        except (requests.exceptions.Timeout, requests.exceptions.ReadTimeout):
+            elapsed = time.time() - start_time
+            logger.warning(f"Gemini request timed out after {elapsed:.2f}s (attempt {attempt + 1})")
+            if attempt == 0:
+                time.sleep(1.0)
+                continue
+            last_error_category = 'TIMEOUT'
             return {
-                'answer': role_text,
-                'mode': 'domain_career_knowledge',
-                'model': 'skillbridge-catalog',
-                'grounded_faqs': [f['id'] for f in faqs],
+                'answer': (
+                    "⚠️ **AI Service Timed Out**\n\n"
+                    "The upstream request to Google Gemini timed out before generating a response. "
+                    "Please try submitting your question again."
+                ),
+                'mode': 'service_unavailable',
+                'model': model_name,
                 'can_create_ticket': False,
+                'grounded_faqs': [],
             }
+        except requests.exceptions.RequestException as e:
+            elapsed = time.time() - start_time
+            logger.error(f"Gemini network connection error in {elapsed:.2f}s: {type(e).__name__}")
+            last_error_category = 'NETWORK_ERROR'
+            break
 
-    # 6. Moderate FAQ Match Fallback
-    if faqs and faqs[0]['relevance_score'] >= 1.0:
-        top_faq = faqs[0]
-        other_matches = [f"• {f['question']}" for f in faqs[1:3]]
-        extras = f"\n\n**Related Topics:**\n" + "\n".join(other_matches) if other_matches else ""
-        return {
-            'answer': f"{top_faq['answer']}{extras}",
-            'mode': 'deterministic_sql_faq',
-            'model': 'postgres-retrieval',
-            'grounded_faqs': [top_faq['id']],
-            'can_create_ticket': False,
-        }
+    elapsed = time.time() - start_time
+    logger.error(f"Gemini request failed: status={last_status_code}, category={last_error_category}, total_time={elapsed:.2f}s")
 
-    # 7. Safe Ticket Escalation Fallback
     return {
         'answer': (
-            "I couldn't locate a verified answer to your specific query in our platform knowledge base. "
-            "Would you like me to submit a support ticket to our human career and technical team?"
+            "⚠️ **AI Assistant Service Unavailable**\n\n"
+            "The AI assistant is temporarily unable to generate responses from Google Gemini. "
+            "Our engineering team has been notified. You can submit a support ticket if you require immediate help."
         ),
-        'mode': 'fallback_unanswered',
-        'model': 'local-retrieval',
-        'grounded_faqs': [],
+        'mode': 'service_unavailable',
+        'model': model_name,
         'can_create_ticket': True,
+        'grounded_faqs': [],
     }

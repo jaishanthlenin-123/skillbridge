@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema
 
 from .faq_retriever import retrieve_relevant_faqs
 from .chains import generate_assistant_response
-from .mongo import log_chat_message, save_chat_feedback
+from .mongo import log_chat_message, save_chat_feedback, get_recent_chat_history
 from apps.support.models import SupportTicket
 
 class ChatAssistantView(views.APIView):
@@ -66,18 +66,25 @@ class ChatAssistantView(views.APIView):
             response_payload['persisted_to_mongo'] = mongo_ok
             return Response(response_payload, status=status.HTTP_201_CREATED)
 
-        # 2. Normal Query Flow: Log incoming user message
+        # 2. Retrieve recent conversation history from MongoDB
+        recent_history = get_recent_chat_history(conversation_id=conversation_id, limit=6)
+
+        # 3. Log incoming user message
         mongo_user_ok = log_chat_message(
             conversation_id=conversation_id,
             role='user',
             content=message
         )
 
-        # 3. Retrieve FAQs from PostgreSQL
-        relevant_faqs = retrieve_relevant_faqs(message, limit=4)
+        # 4. Retrieve relevant FAQs from PostgreSQL for context grounding
+        relevant_faqs = retrieve_relevant_faqs(message, limit=3)
 
-        # 4. Synthesize Grounded Response
-        llm_result = generate_assistant_response(query=message, faqs=relevant_faqs)
+        # 5. Synthesize Grounded Response with Gemini
+        llm_result = generate_assistant_response(
+            query=message,
+            faqs=relevant_faqs,
+            conversation_history=recent_history
+        )
 
         # 5. Log Assistant message to MongoDB
         mongo_assistant_ok = log_chat_message(

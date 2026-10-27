@@ -1,21 +1,34 @@
 import re
 from typing import List, Dict, Any
-from django.db.models import Q
 from apps.faq.models import FAQ
 
-def retrieve_relevant_faqs(query: str, limit: int = 4) -> List[Dict[str, Any]]:
+STOP_WORDS = {
+    'the', 'and', 'for', 'with', 'what', 'how', 'why', 'who', 'when', 'where',
+    'can', 'you', 'your', 'about', 'tell', 'this', 'that', 'from', 'does', 'did',
+    'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'could', 'should',
+    'please', 'want', 'like', 'need', 'know', 'explain', 'give', 'into', 'some'
+}
+
+def retrieve_relevant_faqs(query: str, limit: int = 3) -> List[Dict[str, Any]]:
     """
-    Retrieves the most relevant active FAQ records from PostgreSQL
-    using lexical token scoring and phrase matching.
+    Retrieves genuinely relevant active FAQ records from PostgreSQL
+    using keyword matching with stopword suppression and minimum relevance thresholds.
+    Returns an empty list if no meaningful keywords match.
     """
     clean_query = query.strip().lower()
     if not clean_query:
         return []
 
-    # Tokenize query words (length > 2)
-    tokens = [t for t in re.findall(r'\b\w+\b', clean_query) if len(t) > 2]
-    
-    # Query database
+    # Tokenize query words (length > 2) excluding stop words
+    tokens = [
+        t for t in re.findall(r'\b[a-z0-9_-]+\b', clean_query)
+        if len(t) > 2 and t not in STOP_WORDS
+    ]
+
+    if not tokens:
+        return []
+
+    # Query active database FAQs
     all_faqs = list(FAQ.objects.filter(is_active=True).select_related('category'))
     if not all_faqs:
         return []
@@ -28,16 +41,17 @@ def retrieve_relevant_faqs(query: str, limit: int = 4) -> List[Dict[str, Any]]:
 
         # Exact phrase match in question gets massive boost
         if clean_query in q_lower:
-            score += 10.0
-        
-        # Token matches
+            score += 15.0
+
+        # Token matches across question and answer
         for t in tokens:
             if t in q_lower:
-                score += 3.0
-            if t in a_lower:
-                score += 1.0
+                score += 4.0
+            elif t in a_lower:
+                score += 1.5
 
-        if score > 0:
+        # Only retain entries with genuine relevance
+        if score >= 3.0:
             scored_faqs.append((score, faq))
 
     scored_faqs.sort(key=lambda x: x[0], reverse=True)

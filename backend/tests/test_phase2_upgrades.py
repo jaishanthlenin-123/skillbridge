@@ -116,7 +116,17 @@ class TestPhase2SkillBridgeUpgrades:
         assert r_data['checks']['database']['status'] == 'up'
 
     # 6. AI Assistant Chat & Escalation Tests
-    def test_assistant_chat_error_explanation(self, client):
+    @patch('apps.assistant.chains.requests.post')
+    def test_assistant_chat_error_explanation(self, mock_post, client):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            'candidates': [
+                {'content': {'parts': [{'text': 'Error SB-1001 means Resume Processing Failed. We were unable to extract text.'}]}}
+            ]
+        }
+        mock_post.return_value = mock_resp
+
         resp = client.post('/api/v1/assistant/chat/', {
             'message': 'What does error SB-1001 mean?',
             'conversation_id': 'test_conv_123',
@@ -124,7 +134,7 @@ class TestPhase2SkillBridgeUpgrades:
         assert resp.status_code == status.HTTP_200_OK
         data = resp.json()
         assert 'SB-1001' in data['answer']
-        assert 'Resume Processing Failed' in data['answer'] or 'extract' in data['answer'].lower() or 'convert' in data['answer'].lower()
+        assert 'Resume Processing Failed' in data['answer'] or 'extract' in data['answer'].lower()
 
     def test_assistant_chat_ticket_creation(self, client):
         resp = client.post('/api/v1/assistant/chat/', {
