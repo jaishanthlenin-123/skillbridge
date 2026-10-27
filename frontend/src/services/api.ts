@@ -285,4 +285,7 @@ export const api = {
 
   // Error Code Registry
   getErrorRegistry: () => request<{ count: number; errors: ErrorRegistryItem[] }>('/errors/'),
+
+  // Health Check
+  checkHealth: () => request<{ status: string }>('/health/'),
 };

@@ -64,9 +64,11 @@ export interface JobListItem {
   id: string;
   title: string;
   company_name: string;
+  company?: string;
   source_url: string;
   is_sample?: boolean;
   location?: string;
+  description?: string;
   employment_type?: string;
   experience_level?: string;
   requirements_count: number;

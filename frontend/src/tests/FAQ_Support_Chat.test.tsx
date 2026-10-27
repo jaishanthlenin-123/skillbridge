@@ -107,8 +107,8 @@ describe('Phase 2 Frontend Upgrades', () => {
 
     fireEvent.click(launcher);
 
-    expect(screen.getByText(/SkillBridge Assistant/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Ask a question or explain an error/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Career Assistant/i)[0]).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Ask about career planning, skills/i)).toBeInTheDocument();
   });
 
   it('renders NotFoundPage with 404 message and recovery links', () => {

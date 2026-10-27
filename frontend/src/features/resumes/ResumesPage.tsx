@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Upload, FileText, Trash2, Eye, AlertCircle, CheckCircle2,
-  Clock, Plus, ShieldCheck, ArrowRight
+  ShieldCheck, ArrowRight, Sparkles
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { ResumeListItem } from '../../types';
@@ -18,8 +18,9 @@ export const ResumesPage: React.FC = () => {
   const fetchResumes = async () => {
     try {
       setLoading(true);
+      setUploadError(null);
       const data = await api.getResumes();
-      setResumes(data);
+      setResumes(Array.isArray(data) ? data : []);
     } catch (err: any) {
       setUploadError(err.message || 'Failed to load resumes.');
     } finally {

@@ -41,8 +41,29 @@ export const ChatWidget: React.FC = () => {
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [ticketEmail, setTicketEmail] = useState('');
   const [ticketSubject, setTicketSubject] = useState('');
+  const [serviceStatus, setServiceStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkStatus = async () => {
+      try {
+        const res = await api.checkHealth();
+        if (mounted) {
+          setServiceStatus(res?.status === 'healthy' ? 'ready' : 'offline');
+        }
+      } catch {
+        if (mounted) setServiceStatus('offline');
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOpenChat = (e?: any) => {
@@ -172,7 +193,15 @@ export const ChatWidget: React.FC = () => {
           aria-label="Open AI Assistant"
         >
           <Bot className="h-7 w-7" />
-          <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950 animate-pulse" />
+          <span
+            className={`absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-slate-950 animate-pulse ${
+              serviceStatus === 'ready'
+                ? 'bg-emerald-500'
+                : serviceStatus === 'checking'
+                ? 'bg-amber-500'
+                : 'bg-rose-500'
+            }`}
+          />
           <span className="absolute right-16 bg-slate-900 border border-slate-700 text-white text-xs px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none">
             Ask AI Assistant
           </span>
@@ -191,9 +220,21 @@ export const ChatWidget: React.FC = () => {
               <div>
                 <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
                   Career Assistant
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
-                    Ready
-                  </span>
+                  {serviceStatus === 'ready' && (
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+                      Ready
+                    </span>
+                  )}
+                  {serviceStatus === 'checking' && (
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+                      Connecting
+                    </span>
+                  )}
+                  {serviceStatus === 'offline' && (
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded">
+                      Offline
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[11px] text-slate-400">Career & Resume Guidance</p>
               </div>

@@ -9,7 +9,6 @@ import type { ResumeDetail } from '../../types';
 
 export const ResumeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [resume, setResume] = useState<ResumeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +26,7 @@ export const ResumeDetailPage: React.FC = () => {
         setLoading(true);
         const data = await api.getResume(id);
         setResume(data);
-        setSkillsList(data.skills.map((s) => s.skill_name));
+        setSkillsList((data.skills || []).map((s) => s.skill_name));
       } catch (err: any) {
         setError(err.message || 'Failed to load resume details.');
       } finally {
@@ -181,7 +180,7 @@ export const ResumeDetailPage: React.FC = () => {
         {/* Skill Tags */}
         <div className="flex flex-wrap gap-2 pt-2">
           {skillsList.map((skillName) => {
-            const occurrence = resume.skills.find((s) => s.skill_name === skillName);
+            const occurrence = (resume.skills || []).find((s) => s.skill_name === skillName);
             return (
               <div
                 key={skillName}
@@ -205,10 +204,10 @@ export const ResumeDetailPage: React.FC = () => {
       <div className="glass-panel p-6 rounded-xl space-y-5">
         <h3 className="text-base font-semibold text-white flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-violet-400" />
-          <span>Parsed Document Sections ({resume.sections.length})</span>
+          <span>Parsed Document Sections ({(resume.sections || []).length})</span>
         </h3>
 
-        {resume.sections.length === 0 ? (
+        {(resume.sections || []).length === 0 ? (
           <p className="text-xs text-slate-500 italic py-4">No sections segmented.</p>
         ) : (
           <div className="space-y-4">

@@ -29,7 +29,7 @@ describe('SkillBridge Frontend Application Shell', () => {
 
     render(<App />);
     expect(screen.getByText(/SkillBridge/i)).toBeInTheDocument();
-    expect(screen.getByText(/My Resumes/i)).toBeInTheDocument();
-    expect(screen.getByText(/Job Library/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resume/i)).toBeInTheDocument();
+    expect(screen.getByText(/Jobs/i)).toBeInTheDocument();
   });
 });

@@ -73,6 +73,11 @@ export const DashboardPage: React.FC = () => {
   if (!token) {
     return (
       <div className="space-y-12 pb-8">
+        {error && (
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center justify-between">
+            <span>{error}</span>
+          </div>
+        )}
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-indigo-950/40 via-slate-900/60 to-slate-950 border border-slate-800 p-8 sm:p-12 text-center lg:text-left flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="max-w-2xl space-y-4">
@@ -237,9 +242,9 @@ export const DashboardPage: React.FC = () => {
                 <div key={job.id} className="glass-panel p-5 rounded-xl border border-slate-800 space-y-3 flex flex-col justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-white">{job.title}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{job.company || 'Technology Organization'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{job.company_name || job.company || 'Technology Organization'}</p>
                     <p className="text-xs text-slate-300 line-clamp-2 mt-2 leading-relaxed">
-                      {job.description}
+                      {job.description || 'Full-time technical role with comprehensive skill requirements and growth milestones.'}
                     </p>
                   </div>
                   <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
