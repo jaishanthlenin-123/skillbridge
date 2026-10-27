@@ -53,7 +53,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
   const requiresSession =
     endpoint.startsWith('/resumes') ||
     endpoint.startsWith('/matches') ||
-    endpoint.startsWith('/roadmaps');
+    endpoint.startsWith('/roadmaps') ||
+    (endpoint.startsWith('/jobs') && options.method && options.method !== 'GET');
 
   if (!token && requiresSession) {
     token = await ensureSessionToken();

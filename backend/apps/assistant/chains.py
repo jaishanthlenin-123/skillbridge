@@ -21,11 +21,32 @@ def generate_assistant_response(
     conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
     """
-    Synthesizes an answer using LangChain / Google Gemini when configured,
-    or falls back to deterministic FAQ extraction if the key is missing or service is offline.
+    Synthesizes an answer using Google Gemini when configured and available,
+    or falls back to conversational greetings and PostgreSQL FAQ extraction if the key is missing or quota is exhausted.
     """
+    clean_query = query.lower().strip().rstrip('!?.')
+
+    # 1. Immediate Conversational Greeting & Introduction
+    GREETINGS = {'hi', 'hello', 'hey', 'greetings', 'good morning', 'good afternoon', 'good evening', 'who are you', 'what can you do', 'help', 'start'}
+    if clean_query in GREETINGS or clean_query.startswith(('hi ', 'hello ', 'hey ')):
+        return {
+            'answer': (
+                "Hello! I am your SkillBridge AI Career Assistant.\n\n"
+                "I can help you:\n"
+                "• Understand your resume skill-matching scores and breakdown\n"
+                "• Identify technical skill gaps and recommended learning milestones\n"
+                "• Explore our platform knowledge base and active career jobs\n"
+                "• Diagnose and resolve application error codes\n\n"
+                "How can I help you today?"
+            ),
+            'mode': 'conversational_greeting',
+            'model': 'skillbridge-assistant',
+            'grounded_faqs': [],
+            'can_create_ticket': False,
+        }
+
     api_key = os.getenv('GEMINI_API_KEY', '').strip()
-    model_name = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash').strip()
+    model_name = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash').strip()
 
     # Build context string from retrieved SQL FAQs
     faq_context_lines = []
@@ -39,7 +60,7 @@ def generate_assistant_response(
         if code.lower() in query.lower():
             error_context += f"\n[Error Code: {code}]\nMeaning: {info['meaning']}\nExplanation: {info['explanation']}\nRecovery: {info['recovery_action']}\n"
 
-    # Attempt LLM generation if API key is provided
+    # 2. Attempt LLM generation if API key is provided
     if api_key:
         try:
             import google.generativeai as genai
@@ -59,7 +80,11 @@ User Question: {query}
 
 Provide a helpful, grounded response with references where appropriate."""
 
-            response = model.generate_content(prompt)
+            # Strict 10-second bounded timeout to prevent hanging worker threads
+            response = model.generate_content(
+                prompt,
+                request_options={'timeout': float(os.getenv('GEMINI_TIMEOUT_SECONDS', '10.0'))}
+            )
             answer_text = response.text.strip() if response and response.text else None
 
             if answer_text:
@@ -71,10 +96,10 @@ Provide a helpful, grounded response with references where appropriate."""
                     'can_create_ticket': len(faqs) == 0 or 'ticket' in answer_text.lower(),
                 }
         except Exception as e:
-            logger.warning(f"Gemini API generation failed or was unreachable: {e}")
+            logger.warning(f"Gemini API generation failed or was rate-limited: {type(e).__name__}. Falling back to PostgreSQL FAQ knowledge base.")
 
-    # Deterministic Grounded Fallback
-    # 1. Did the user ask about an error code?
+    # 3. Deterministic Grounded Fallback
+    # Error code match
     for code, info in ERROR_REGISTRY.items():
         if code.lower() in query.lower():
             return {
@@ -89,8 +114,8 @@ Provide a helpful, grounded response with references where appropriate."""
                 'can_create_ticket': True,
             }
 
-    # 2. Did we find relevant SQL FAQs?
-    if faqs and faqs[0]['relevance_score'] >= 3.0:
+    # Relevant SQL FAQs
+    if faqs and faqs[0]['relevance_score'] >= 1.0:
         top_faq = faqs[0]
         other_matches = [f"• {f['question']}" for f in faqs[1:3]]
         extras = f"\n\n**Related Topics:**\n" + "\n".join(other_matches) if other_matches else ""
@@ -102,14 +127,15 @@ Provide a helpful, grounded response with references where appropriate."""
             'can_create_ticket': False,
         }
 
-    # 3. Insufficient context / Fallback to ticket escalation
+    # Fallback to human ticket escalation
     return {
         'answer': (
-            "I couldn't find a definitive answer to your question in our database. "
-            "Would you like me to open a support ticket for our engineering team to review?"
+            "I couldn't find a verified answer to your specific question in our knowledge base or FAQ documentation. "
+            "Would you like me to submit a support ticket to our human engineering and career support team?"
         ),
         'mode': 'fallback_unanswered',
         'model': 'local-retrieval',
         'grounded_faqs': [],
         'can_create_ticket': True,
     }
+

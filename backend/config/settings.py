@@ -195,8 +195,18 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-guest-token',
+    'x-request-id',
+    'x-internal-token',
+]
+
 # Internal ML Service Configuration
-ML_SERVICE_URL = os.getenv('ML_SERVICE_URL', 'http://127.0.0.1:8001')
+_ml_url = os.getenv('ML_SERVICE_URL', 'http://127.0.0.1:8001').strip()
+if _ml_url and not _ml_url.startswith(('http://', 'https://')):
+    _ml_url = f"http://{_ml_url}"
+ML_SERVICE_URL = _ml_url
 ML_SERVICE_INTERNAL_TOKEN = os.getenv('ML_SERVICE_INTERNAL_TOKEN', 'skillbridge-internal-secret-token-change-in-production')
 ML_SERVICE_TIMEOUT_SECONDS = int(os.getenv('ML_SERVICE_TIMEOUT_SECONDS', '30'))
 
