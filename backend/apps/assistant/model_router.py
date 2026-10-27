@@ -84,8 +84,8 @@ class ModelRouterResult:
 
 def route_model_request(
     payload: Dict[str, Any],
-    overall_deadline_sec: float = 35.0,
-    per_attempt_timeout_sec: float = 14.0
+    overall_deadline_sec: float = 24.0,
+    per_attempt_timeout_sec: float = 8.0
 ) -> ModelRouterResult:
     """
     Centralized model router that executes the assistant LLM generation.

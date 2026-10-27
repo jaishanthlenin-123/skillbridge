@@ -23,7 +23,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py seed_skillbridge
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     healthCheckPath: /api/v1/health/
     envVars:
       - key: ENVIRONMENT
