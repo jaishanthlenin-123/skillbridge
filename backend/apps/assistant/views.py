@@ -67,7 +67,7 @@ class ChatAssistantView(views.APIView):
             return Response(response_payload, status=status.HTTP_201_CREATED)
 
         user = request.user if request.user.is_authenticated else None
-        user_id = user.id if user else None
+        user_id = str(user.id) if user and hasattr(user, 'id') and user.id else None
         is_guest = not bool(user)
 
         # Resolve stable guest session identifier

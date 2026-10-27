@@ -198,6 +198,7 @@ CORS_ALLOW_CREDENTIALS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-guest-token',
+    'x-guest-session-id',
     'x-request-id',
     'x-internal-token',
 ]
