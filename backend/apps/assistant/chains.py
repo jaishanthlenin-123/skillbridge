@@ -112,7 +112,7 @@ def generate_assistant_response(
     logger.info(f"Career Assistant query received (length: {len(query)})")
 
     api_key = os.getenv('GEMINI_API_KEY', '').strip()
-    model_name = os.getenv('GEMINI_MODEL', 'gemini-3.1-flash-lite-preview').strip()
+    model_name = os.getenv('GEMINI_MODEL', 'gemini-3-flash-preview').strip()
     timeout_sec = float(os.getenv('GEMINI_TIMEOUT_SECONDS', '20.0'))
 
     # Validate configuration
