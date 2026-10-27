@@ -65,16 +65,20 @@ class ReadinessCheckView(views.APIView):
         gemini_key = os.getenv('GEMINI_API_KEY', '').strip()
         checks['gemini_llm'] = {
             'configured': bool(gemini_key),
-            'model': os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'),
-            'mode': 'live_genai' if gemini_key else 'deterministic_faq_fallback'
+            'model': os.getenv('GEMINI_MODEL', 'gemini-3-flash-preview'),
+            'mode': 'live_genai' if gemini_key else 'service_unavailable'
         }
 
-        mongo_uri = os.getenv('MONGODB_URI', '').strip()
-        checks['mongodb_atlas'] = {
-            'configured': bool(mongo_uri),
-            'database': os.getenv('MONGODB_DATABASE', 'skillbridge'),
-            'mode': 'persistent_atlas' if mongo_uri else 'in_memory_or_disabled'
-        }
+        try:
+            from apps.assistant.mongo import check_mongo_health
+            checks['mongodb_atlas'] = check_mongo_health()
+        except Exception as e:
+            checks['mongodb_atlas'] = {
+                'status': 'down',
+                'configured': bool(os.getenv('MONGODB_URI')),
+                'database': os.getenv('MONGODB_DATABASE', 'bridgeskill'),
+                'error': str(e),
+            }
 
         overall_ready = checks['database']['status'] == 'up'
         http_status = status.HTTP_200_OK if overall_ready else status.HTTP_503_SERVICE_UNAVAILABLE

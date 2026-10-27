@@ -75,10 +75,31 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const isAssistantEndpoint = endpoint.startsWith('/assistant/');
+  const timeoutMs = isAssistantEndpoint ? 50000 : 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } catch (netErr: any) {
+    if (netErr.name === 'AbortError') {
+      throw new Error(
+        `Request timed out after ${timeoutMs / 1000}s. The SkillBridge backend may be waking up or temporarily busy. Please retry.`
+      );
+    }
+    // Clean transformation for browser-level network failures (avoids raw "Failed to fetch")
+    throw new Error(
+      'Unable to connect to SkillBridge server. The service may be waking up from sleep or experiencing network latency. Please retry.'
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 401) {
     // If a guest session was expired or purged, refresh guest token once and retry
@@ -106,9 +127,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     let errorDetail = `HTTP ${response.status} ${response.statusText}`;
     try {
       const errorJson = await response.json();
-      errorDetail = errorJson.error || errorJson.detail || JSON.stringify(errorJson);
+      errorDetail = errorJson.error || errorJson.detail || errorJson.message || JSON.stringify(errorJson);
     } catch {
-      // ignore
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        errorDetail = `SkillBridge service is temporarily unavailable (HTTP ${response.status}). Please retry in a few moments.`;
+      }
     }
     throw new Error(errorDetail);
   }

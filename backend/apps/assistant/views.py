@@ -69,11 +69,20 @@ class ChatAssistantView(views.APIView):
         # 2. Retrieve recent conversation history from MongoDB
         recent_history = get_recent_chat_history(conversation_id=conversation_id, limit=6)
 
+        req_id = getattr(request, 'request_id', '')
+        user_id = request.user.id if request.user.is_authenticated else None
+        is_guest = not request.user.is_authenticated
+
         # 3. Log incoming user message
         mongo_user_ok = log_chat_message(
             conversation_id=conversation_id,
             role='user',
-            content=message
+            content=message,
+            metadata={
+                'user_id': user_id,
+                'is_guest': is_guest,
+                'request_id': req_id,
+            }
         )
 
         # 4. Retrieve relevant FAQs from PostgreSQL for context grounding
@@ -86,12 +95,18 @@ class ChatAssistantView(views.APIView):
             conversation_history=recent_history
         )
 
-        # 5. Log Assistant message to MongoDB
+        # 6. Log Assistant message to MongoDB
         mongo_assistant_ok = log_chat_message(
             conversation_id=conversation_id,
             role='assistant',
             content=llm_result['answer'],
-            metadata={'mode': llm_result['mode'], 'model': llm_result['model']}
+            metadata={
+                'mode': llm_result['mode'],
+                'model': llm_result['model'],
+                'user_id': user_id,
+                'is_guest': is_guest,
+                'request_id': req_id,
+            }
         )
 
         return Response({

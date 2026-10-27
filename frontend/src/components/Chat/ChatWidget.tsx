@@ -58,7 +58,7 @@ export const ChatWidget: React.FC = () => {
       }
     };
     checkStatus();
-    const interval = setInterval(checkStatus, 30000);
+    const interval = setInterval(checkStatus, 60000);
     return () => {
       mounted = false;
       clearInterval(interval);
@@ -117,11 +117,24 @@ export const ChatWidget: React.FC = () => {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
+      const isNetwork =
+        err.message &&
+        (err.message.includes('connect') ||
+          err.message.includes('timed out') ||
+          err.message.includes('network') ||
+          err.message.includes('unavailable') ||
+          err.message.includes('502') ||
+          err.message.includes('503'));
+
       const errMsg: ChatMessage = {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${err.message || 'Unable to connect to assistant service.'}. Would you like to submit a support ticket?`,
+        content: isNetwork
+          ? `⚠️ **Service Temporarily Unavailable**\n\n${err.message || 'Unable to reach the assistant service.'}\n\nYou can click **Retry Question** below, or open a support ticket if the issue persists.`
+          : `Sorry, I encountered an error: ${err.message || 'Unable to process request.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         can_create_ticket: true,
+        is_error: true,
+        retry_text: textToSend,
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
@@ -314,6 +327,19 @@ export const ChatWidget: React.FC = () => {
                       <div className="mt-2.5 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-1.5 font-semibold">
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                         <span>Ticket Number: {msg.ticket_number}</span>
+                      </div>
+                    )}
+
+                    {msg.is_error && msg.retry_text && (
+                      <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center gap-2">
+                        <button
+                          onClick={() => handleSendMessage(msg.retry_text)}
+                          disabled={sending}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium flex items-center gap-1.5 transition-all text-xs cursor-pointer shadow-md shadow-indigo-600/20"
+                        >
+                          <RefreshCw className={`h-3 w-3 ${sending ? 'animate-spin' : ''}`} />
+                          <span>Retry Question</span>
+                        </button>
                       </div>
                     )}
                   </div>

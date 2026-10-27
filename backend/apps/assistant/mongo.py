@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -8,35 +9,99 @@ logger = logging.getLogger('skillbridge.assistant.mongo')
 _mongo_client = None
 _mongo_db = None
 _indexes_ensured = False
+_last_failure_timestamp: float = 0.0
+_last_error_reason: str = ""
+_CIRCUIT_COOLDOWN_SECONDS: float = 30.0
+
+def reset_mongo_connection():
+    """Resets cached client and circuit breaker (useful for tests and connection retries)."""
+    global _mongo_client, _mongo_db, _indexes_ensured, _last_failure_timestamp, _last_error_reason
+    if _mongo_client is not None:
+        try:
+            _mongo_client.close()
+        except Exception:
+            pass
+    _mongo_client = None
+    _mongo_db = None
+    _indexes_ensured = False
+    _last_failure_timestamp = 0.0
+    _last_error_reason = ""
 
 def get_mongo_db():
-    global _mongo_client, _mongo_db, _indexes_ensured
+    """
+    Retrieves or establishes a singleton MongoDB database handle.
+    Includes a circuit breaker to avoid blocking requests repeatedly
+    when MongoDB Atlas is experiencing an outage or network restriction.
+    """
+    global _mongo_client, _mongo_db, _indexes_ensured, _last_failure_timestamp, _last_error_reason
+
     uri = os.getenv('MONGODB_URI', '').strip()
     if not uri:
         return None
 
+    # Already connected
     if _mongo_db is not None:
         return _mongo_db
 
+    # Circuit breaker: if connection recently failed, fail fast during cooldown window
+    now_monotonic = time.monotonic()
+    if (now_monotonic - _last_failure_timestamp) < _CIRCUIT_COOLDOWN_SECONDS:
+        return None
+
     try:
         from pymongo import MongoClient
-        db_name = os.getenv('MONGODB_DATABASE', 'skillbridge')
-        _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=3000, connectTimeoutMS=3000)
-        # Verify connection
-        _mongo_client.admin.command('ping')
+
+        # Default database name in Atlas is 'bridgeskill'
+        db_name = os.getenv('MONGODB_DATABASE', 'bridgeskill').strip() or 'bridgeskill'
+
+        client_kwargs: Dict[str, Any] = {
+            'serverSelectionTimeoutMS': 3000,
+            'connectTimeoutMS': 3000,
+            'socketTimeoutMS': 5000,
+        }
+
+        # Attempt to use certifi root certificates if available
+        try:
+            import certifi
+            client_kwargs['tlsCAFile'] = certifi.where()
+        except ImportError:
+            pass
+
+        client = MongoClient(uri, **client_kwargs)
+
+        # Verify connectivity with an immediate lightweight ping
+        client.admin.command('ping')
+
+        _mongo_client = client
         _mongo_db = _mongo_client[db_name]
+        _last_error_reason = ""
 
-        # Lazy ensure indexes
+        # Lazy ensure indexes on initial connection
         if not _indexes_ensured:
-            _mongo_db.chat_conversations.create_index([("conversation_id", 1)], unique=True)
-            _mongo_db.chat_messages.create_index([("conversation_id", 1), ("created_at", 1)])
-            _mongo_db.assistant_feedback.create_index([("conversation_id", 1), ("created_at", 1)])
-            _indexes_ensured = True
+            try:
+                _mongo_db.chat_conversations.create_index([("conversation_id", 1)], unique=True)
+                _mongo_db.chat_messages.create_index([("conversation_id", 1), ("created_at", 1)])
+                _mongo_db.assistant_feedback.create_index([("conversation_id", 1), ("created_at", 1)])
+                _indexes_ensured = True
+            except Exception as index_err:
+                logger.warning(f"Notice: Index setup deferred or partially applied: {index_err}")
 
-        logger.info("Successfully connected to MongoDB Atlas.")
+        logger.info(f"Successfully connected to MongoDB Atlas (database: '{db_name}').")
         return _mongo_db
+
     except Exception as e:
-        logger.warning(f"MongoDB Atlas connection unavailable or failed: {e}")
+        _last_failure_timestamp = time.monotonic()
+        _last_error_reason = f"{type(e).__name__}: {str(e)[:150]}"
+        logger.warning(f"MongoDB Atlas connection unavailable or failed: {type(e).__name__} (Circuit breaker active for {_CIRCUIT_COOLDOWN_SECONDS}s)")
+        
+        # Clean up client socket pool immediately to prevent socket exhaustion
+        if '_mongo_client' in locals() and client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+        _mongo_client = None
+        _mongo_db = None
         return None
 
 def log_chat_message(
@@ -47,7 +112,8 @@ def log_chat_message(
 ) -> bool:
     """
     Logs an assistant or user message into MongoDB chat_messages collection.
-    Returns True if persisted, False if MongoDB is unavailable or failed.
+    Also upserts the conversation document in chat_conversations.
+    Returns True if persisted, False if MongoDB is unavailable.
     """
     db = get_mongo_db()
     if db is None:
@@ -55,29 +121,45 @@ def log_chat_message(
 
     try:
         now = datetime.now(timezone.utc)
-        
-        # Upsert conversation document
+        safe_meta = metadata or {}
+
+        # 1. Upsert conversation tracking record
+        conversation_update: Dict[str, Any] = {
+            "$set": {
+                "updated_at": now,
+                "last_role": role,
+                "last_message_preview": content[:120],
+            },
+            "$inc": {"message_count": 1},
+            "$setOnInsert": {
+                "created_at": now,
+                "channel": safe_meta.get("channel", "web_widget"),
+            }
+        }
+        if "user_id" in safe_meta and safe_meta["user_id"]:
+            conversation_update["$set"]["user_id"] = str(safe_meta["user_id"])
+        if "is_guest" in safe_meta:
+            conversation_update["$set"]["is_guest"] = bool(safe_meta["is_guest"])
+
         db.chat_conversations.update_one(
             {"conversation_id": conversation_id},
-            {
-                "$set": {"updated_at": now},
-                "$setOnInsert": {"created_at": now, "channel": "web_widget"}
-            },
+            conversation_update,
             upsert=True
         )
 
-        # Insert message document
+        # 2. Insert message record
         doc = {
             "conversation_id": conversation_id,
             "role": role,
             "content": content,
-            "metadata": metadata or {},
+            "metadata": safe_meta,
             "created_at": now,
         }
         db.chat_messages.insert_one(doc)
         return True
+
     except Exception as e:
-        logger.warning(f"Failed to log chat message to MongoDB: {e}")
+        logger.warning(f"Failed to log chat message to MongoDB: {type(e).__name__}")
         return False
 
 def save_chat_feedback(
@@ -88,7 +170,7 @@ def save_chat_feedback(
 ) -> bool:
     """
     Persists user feedback for an assistant interaction to MongoDB.
-    Returns True if persisted, False if MongoDB is unavailable or failed.
+    Returns True if persisted, False if MongoDB is unavailable.
     """
     db = get_mongo_db()
     if db is None:
@@ -106,7 +188,7 @@ def save_chat_feedback(
         db.assistant_feedback.insert_one(doc)
         return True
     except Exception as e:
-        logger.warning(f"Failed to record feedback to MongoDB: {e}")
+        logger.warning(f"Failed to record feedback to MongoDB: {type(e).__name__}")
         return False
 
 def get_recent_chat_history(conversation_id: str, limit: int = 6) -> list[dict[str, str]]:
@@ -128,5 +210,49 @@ def get_recent_chat_history(conversation_id: str, limit: int = 6) -> list[dict[s
         messages.reverse()
         return messages
     except Exception as e:
-        logger.warning(f"Failed to retrieve chat history from MongoDB: {e}")
+        logger.warning(f"Failed to retrieve chat history from MongoDB: {type(e).__name__}")
         return []
+
+def check_mongo_health() -> Dict[str, Any]:
+    """
+    Safe health probe for Readiness check.
+    Never exposes credentials or full URIs.
+    """
+    uri = os.getenv('MONGODB_URI', '').strip()
+    db_name = os.getenv('MONGODB_DATABASE', 'bridgeskill').strip() or 'bridgeskill'
+
+    if not uri:
+        return {
+            'status': 'unconfigured',
+            'configured': False,
+            'database': db_name,
+            'mode': 'disabled',
+        }
+
+    db = get_mongo_db()
+    if db is None:
+        return {
+            'status': 'down',
+            'configured': True,
+            'database': db_name,
+            'mode': 'persistent_atlas',
+            'error': _last_error_reason or 'Connection failed or circuit breaker active',
+        }
+
+    try:
+        # Quick ping check
+        db.command('ping')
+        return {
+            'status': 'up',
+            'configured': True,
+            'database': db.name,
+            'mode': 'persistent_atlas',
+        }
+    except Exception as e:
+        return {
+            'status': 'down',
+            'configured': True,
+            'database': db_name,
+            'mode': 'persistent_atlas',
+            'error': f"{type(e).__name__}",
+        }

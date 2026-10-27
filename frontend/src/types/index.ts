@@ -222,6 +222,8 @@ export interface ChatMessage {
   can_create_ticket?: boolean;
   grounded_faqs?: string[];
   persisted_to_mongo?: boolean;
+  is_error?: boolean;
+  retry_text?: string;
 }
 
 export interface ErrorRegistryItem {
