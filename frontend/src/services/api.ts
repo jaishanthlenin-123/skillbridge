@@ -93,6 +93,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
         `Request timed out after ${timeoutMs / 1000}s. The SkillBridge backend may be waking up or temporarily busy. Please retry.`
       );
     }
+    if (isAssistantEndpoint) {
+      throw new Error(
+        'The assistant is temporarily unavailable. Your message is still here. Please try again shortly.'
+      );
+    }
     // Clean transformation for browser-level network failures (avoids raw "Failed to fetch")
     throw new Error(
       'Unable to connect to SkillBridge server. The service may be waking up from sleep or experiencing network latency. Please retry.'

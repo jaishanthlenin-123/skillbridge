@@ -63,9 +63,17 @@ class ReadinessCheckView(views.APIView):
 
         # 3. Check Optional Integrations (Gemini & MongoDB)
         gemini_key = os.getenv('GEMINI_API_KEY', '').strip()
+        try:
+            from apps.assistant.model_router import get_configured_models
+            primary_m, fallback_ms = get_configured_models()
+        except Exception:
+            primary_m, fallback_ms = 'gemini-3.1-flash-lite', ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest']
+
         checks['gemini_llm'] = {
             'configured': bool(gemini_key),
-            'model': os.getenv('GEMINI_MODEL', 'gemini-3-flash-preview'),
+            'primary_model': primary_m,
+            'fallback_models': fallback_ms,
+            'model': primary_m,
             'mode': 'live_genai' if gemini_key else 'service_unavailable'
         }
 

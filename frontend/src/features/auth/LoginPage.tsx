@@ -29,20 +29,20 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-3 sm:px-6 lg:px-8 py-8 relative overflow-hidden">
       {/* Background ambient lighting */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex h-12 w-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 items-center justify-center shadow-xl shadow-indigo-500/25 mb-4">
             <BrainCircuit className="h-7 w-7 text-white" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Welcome back to SkillBridge</h2>
-          <p className="text-sm text-slate-400 mt-1">Sign in to access your resumes, job matches, and career roadmaps</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Welcome back to SkillBridge</h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">Sign in to access your resumes, job matches, and career roadmaps</p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-8 shadow-2xl">
+        <div className="glass-panel rounded-2xl p-5 sm:p-8 shadow-2xl">
           {error && (
             <div className="mb-6 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex items-start gap-2.5">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />

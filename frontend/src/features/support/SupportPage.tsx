@@ -134,10 +134,10 @@ export const SupportPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 justify-center gap-4 text-sm font-semibold">
+      <div className="flex border-b border-slate-800 justify-start sm:justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-none pb-0.5">
         <button
           onClick={() => setActiveTab('submit')}
-          className={`pb-3 px-4 transition-colors border-b-2 cursor-pointer ${
+          className={`pb-3 px-3 sm:px-4 transition-colors border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === 'submit'
               ? 'border-indigo-500 text-white'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -147,7 +147,7 @@ export const SupportPage: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('lookup')}
-          className={`pb-3 px-4 transition-colors border-b-2 cursor-pointer ${
+          className={`pb-3 px-3 sm:px-4 transition-colors border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === 'lookup'
               ? 'border-indigo-500 text-white'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -158,7 +158,7 @@ export const SupportPage: React.FC = () => {
         {token && (
           <button
             onClick={() => setActiveTab('history')}
-            className={`pb-3 px-4 transition-colors border-b-2 cursor-pointer ${
+            className={`pb-3 px-3 sm:px-4 transition-colors border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'history'
                 ? 'border-indigo-500 text-white'
                 : 'border-transparent text-slate-400 hover:text-slate-200'

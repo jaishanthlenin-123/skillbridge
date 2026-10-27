@@ -103,6 +103,7 @@ class ChatAssistantView(views.APIView):
             metadata={
                 'mode': llm_result['mode'],
                 'model': llm_result['model'],
+                'attempts': llm_result.get('attempts', 1),
                 'user_id': user_id,
                 'is_guest': is_guest,
                 'request_id': req_id,
@@ -114,6 +115,7 @@ class ChatAssistantView(views.APIView):
             'answer': llm_result['answer'],
             'mode': llm_result['mode'],
             'model': llm_result['model'],
+            'attempts': llm_result.get('attempts', 1),
             'grounded_faqs': llm_result.get('grounded_faqs', []),
             'can_create_ticket': llm_result.get('can_create_ticket', False),
             'persisted_to_mongo': bool(mongo_assistant_ok),

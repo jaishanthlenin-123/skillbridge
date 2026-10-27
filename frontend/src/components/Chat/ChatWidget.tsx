@@ -129,7 +129,7 @@ export const ChatWidget: React.FC = () => {
       const errMsg: ChatMessage = {
         role: 'assistant',
         content: isNetwork
-          ? `⚠️ **Service Temporarily Unavailable**\n\n${err.message || 'Unable to reach the assistant service.'}\n\nYou can click **Retry Question** below, or open a support ticket if the issue persists.`
+          ? "The assistant is temporarily unavailable. Your message is still here. Please try again shortly."
           : `Sorry, I encountered an error: ${err.message || 'Unable to process request.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         can_create_ticket: true,
@@ -197,15 +197,15 @@ export const ChatWidget: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 select-none">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 select-none">
       {/* Floating Launcher Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-xl shadow-indigo-600/40 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 cursor-pointer relative group"
+          className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-xl shadow-indigo-600/40 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 cursor-pointer relative group"
           aria-label="Open AI Assistant"
         >
-          <Bot className="h-7 w-7" />
+          <Bot className="h-6 w-6 sm:h-7 sm:w-7" />
           <span
             className={`absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-slate-950 animate-pulse ${
               serviceStatus === 'ready'
@@ -215,7 +215,7 @@ export const ChatWidget: React.FC = () => {
                 : 'bg-rose-500'
             }`}
           />
-          <span className="absolute right-16 bg-slate-900 border border-slate-700 text-white text-xs px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none">
+          <span className="hidden sm:inline-block absolute right-16 bg-slate-900 border border-slate-700 text-white text-xs px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg pointer-events-none">
             Ask AI Assistant
           </span>
         </button>
@@ -223,7 +223,7 @@ export const ChatWidget: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[420px] h-[580px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-x-2 bottom-3 top-16 sm:static sm:inset-auto w-auto sm:w-[420px] h-[calc(100vh-80px)] sm:h-[580px] max-h-[640px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
           {/* Header */}
           <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2.5">

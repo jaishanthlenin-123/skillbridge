@@ -196,8 +196,8 @@ export const ResumesPage: React.FC = () => {
         ) : (
           <div className="divide-y divide-slate-800/80">
             {resumes.map((resume) => (
-              <div key={resume.id} className="p-5 hover:bg-slate-900/40 flex items-center justify-between transition-colors">
-                <div className="flex items-center gap-4 min-w-0 pr-4">
+              <div key={resume.id} className="p-4 sm:p-5 hover:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-0 sm:pr-4">
                   <div className="h-10 w-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 text-slate-300">
                     <FileText className="h-5 w-5" />
                   </div>
@@ -208,7 +208,7 @@ export const ResumesPage: React.FC = () => {
                     >
                       {resume.title}
                     </Link>
-                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400 mt-1">
                       <span>{resume.original_filename}</span>
                       <span>•</span>
                       <span>{(resume.file_size_bytes / 1024).toFixed(1)} KB</span>
@@ -218,7 +218,7 @@ export const ResumesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 self-start sm:self-auto">
                   <span
                     className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       resume.parsing_status === 'COMPLETED'

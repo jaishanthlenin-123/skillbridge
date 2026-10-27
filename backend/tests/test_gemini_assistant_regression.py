@@ -5,7 +5,14 @@ import requests
 
 from apps.assistant.chains import generate_assistant_response
 from apps.assistant.faq_retriever import retrieve_relevant_faqs
+from apps.assistant.model_router import reset_model_router_state
 from apps.support.models import SupportTicket
+
+@pytest.fixture(autouse=True)
+def reset_router():
+    reset_model_router_state()
+    yield
+    reset_model_router_state()
 
 @pytest.mark.django_db
 class TestGeminiAssistantRegression:

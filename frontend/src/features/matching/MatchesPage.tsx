@@ -185,8 +185,8 @@ export const MatchesPage: React.FC = () => {
         ) : (
           <div className="divide-y divide-slate-800/80">
             {matches.map((m) => (
-              <div key={m.id} className="p-5 hover:bg-slate-900/40 flex items-center justify-between transition-colors">
-                <div className="flex items-center gap-4 min-w-0 pr-4">
+              <div key={m.id} className="p-4 sm:p-5 hover:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 pr-0 sm:pr-4">
                   <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-indigo-950 to-slate-800 border border-indigo-500/30 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-indigo-400">{m.overall_score}%</span>
                   </div>
@@ -197,7 +197,7 @@ export const MatchesPage: React.FC = () => {
                     >
                       {m.job_title}
                     </Link>
-                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400 mt-1">
                       <span>Resume: {m.resume_title}</span>
                       <span>•</span>
                       <span>Weighted: {m.weighted_coverage_score}%</span>
@@ -209,7 +209,7 @@ export const MatchesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
                   <Link
                     to={`/matches/${m.id}`}
                     className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-md"

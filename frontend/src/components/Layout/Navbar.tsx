@@ -1,9 +1,13 @@
 import React from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Bot, LogIn, UserPlus, LogOut, Sparkles } from 'lucide-react';
+import { Bot, LogIn, UserPlus, LogOut, Menu } from 'lucide-react';
 import { api } from '../../services/api';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const token = localStorage.getItem('skillbridge_token');
@@ -23,7 +27,7 @@ export const Navbar: React.FC = () => {
   };
 
   const getPageTitle = (path: string) => {
-    if (path === '/' || path.startsWith('/dashboard')) return token ? 'Career Dashboard' : 'Find Your Next Opportunity';
+    if (path === '/' || path.startsWith('/dashboard')) return token ? 'Career Dashboard' : 'SkillBridge';
     if (path.startsWith('/resumes')) return 'Resume Management';
     if (path.startsWith('/jobs')) return 'Explore Jobs';
     if (path.startsWith('/matches')) return 'Skill Match Analysis';
@@ -40,15 +44,26 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <div>
-        <h1 className="text-base font-semibold text-white tracking-tight">
+    <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-3 sm:px-6 md:px-8 flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Hamburger Menu Toggle (Visible only on mobile/tablet < md) */}
+        {onOpenMobileMenu && (
+          <button
+            onClick={onOpenMobileMenu}
+            className="p-2 -ml-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg md:hidden cursor-pointer shrink-0 transition-colors"
+            aria-label="Open mobile navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+
+        <h1 className="text-sm sm:text-base font-semibold text-white tracking-tight truncate">
           {getPageTitle(location.pathname)}
         </h1>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* User-friendly Assistant Action */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Assistant Quick Launcher */}
         <button
           onClick={handleOpenAssistant}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 text-xs font-medium transition-colors cursor-pointer"
@@ -59,8 +74,8 @@ export const Navbar: React.FC = () => {
 
         {/* Auth Navigation State */}
         {token ? (
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-xs text-slate-300 font-medium">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden sm:inline text-xs text-slate-300 font-medium truncate max-w-[140px]">
               {user?.first_name || user?.email}
             </span>
             <button
@@ -72,20 +87,21 @@ export const Navbar: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               to="/login"
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors"
             >
               <LogIn className="h-3.5 w-3.5" />
               <span>Sign In</span>
             </Link>
             <Link
               to="/register"
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-md shadow-indigo-600/25"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1 transition-colors shadow-md shadow-indigo-600/25"
             >
               <UserPlus className="h-3.5 w-3.5" />
-              <span>Create Account</span>
+              <span className="hidden sm:inline">Create Account</span>
+              <span className="sm:hidden">Join</span>
             </Link>
           </div>
         )}

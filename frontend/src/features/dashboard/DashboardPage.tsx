@@ -86,18 +86,18 @@ export const DashboardPage: React.FC = () => {
               <span>SkillBridge Career Platform</span>
             </div>
             
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
               Find Your Next <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Career Opportunity</span>
             </h1>
             
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-xl">
+            <p className="text-sm sm:text-lg text-slate-300 leading-relaxed max-w-xl">
               Explore jobs, understand your skill gaps, and build a personalized learning plan to move closer to your career goals.
             </p>
 
-            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3">
               <Link
                 to="/resumes"
-                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+                className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
                 <span>Upload Resume</span>
@@ -105,14 +105,14 @@ export const DashboardPage: React.FC = () => {
               </Link>
               <Link
                 to="/jobs"
-                className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/80 font-semibold text-sm transition-all flex items-center gap-2"
+                className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/80 font-semibold text-xs sm:text-sm transition-all flex items-center gap-2"
               >
                 <Briefcase className="h-4 w-4 text-indigo-400" />
                 <span>Explore Jobs</span>
               </Link>
               <button
                 onClick={handleOpenAssistant}
-                className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/80 font-semibold text-sm transition-all flex items-center gap-2 cursor-pointer"
+                className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/80 font-semibold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Bot className="h-4 w-4 text-violet-400" />
                 <span>Try Career Assistant</span>
@@ -121,7 +121,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Quick Platform Metrics card */}
-          <div className="w-full lg:w-80 glass-panel p-6 rounded-2xl border border-slate-800 space-y-4 shrink-0 text-left">
+          <div className="w-full lg:w-80 glass-panel p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4 shrink-0 text-left">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Platform Overview</h2>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
