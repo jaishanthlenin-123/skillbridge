@@ -174,10 +174,13 @@ def log_chat_message(
             "created_at": now,
         }
         db.chat_messages.insert_one(doc)
+        correlation_id = safe_meta.get("request_id") or "none"
+        logger.info(f"MongoDB persistence success: op=insert_chat_message conv_id={conversation_id} role={role} correlation_id={correlation_id}")
         return True
 
     except Exception as e:
-        logger.warning(f"Failed to log chat message to MongoDB: {type(e).__name__}")
+        correlation_id = safe_meta.get("request_id") if 'safe_meta' in locals() else "none"
+        logger.warning(f"MongoDB persistence failure: op=insert_chat_message conv_id={conversation_id} role={role} correlation_id={correlation_id} error={type(e).__name__}")
         return False
 
 def save_chat_feedback(
@@ -204,9 +207,10 @@ def save_chat_feedback(
             "created_at": now,
         }
         db.assistant_feedback.insert_one(doc)
+        logger.info(f"MongoDB persistence success: op=save_chat_feedback conv_id={conversation_id} message_id={message_id}")
         return True
     except Exception as e:
-        logger.warning(f"Failed to record feedback to MongoDB: {type(e).__name__}")
+        logger.warning(f"MongoDB persistence failure: op=save_chat_feedback conv_id={conversation_id} error={type(e).__name__}")
         return False
 
 def get_recent_chat_history(
@@ -252,9 +256,10 @@ def get_recent_chat_history(
 
         messages = list(cursor)
         messages.reverse()
+        logger.info(f"MongoDB retrieval success: op=get_recent_chat_history conv_id={conversation_id} retrieved_count={len(messages)}")
         return messages
     except Exception as e:
-        logger.warning(f"Failed to retrieve chat history from MongoDB: {type(e).__name__}")
+        logger.warning(f"MongoDB retrieval failure: op=get_recent_chat_history conv_id={conversation_id} error={type(e).__name__}")
         return []
 
 def check_mongo_health() -> Dict[str, Any]:
