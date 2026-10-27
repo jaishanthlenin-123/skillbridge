@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -12,6 +13,16 @@ _indexes_ensured = False
 _last_failure_timestamp: float = 0.0
 _last_error_reason: str = ""
 _CIRCUIT_COOLDOWN_SECONDS: float = 30.0
+
+def _sanitize_for_mongo(val: Any) -> Any:
+    """Recursively converts UUIDs and non-serializable objects to safe BSON primitives."""
+    if isinstance(val, uuid.UUID):
+        return str(val)
+    if isinstance(val, dict):
+        return {str(k): _sanitize_for_mongo(v) for k, v in val.items()}
+    if isinstance(val, (list, tuple, set)):
+        return [_sanitize_for_mongo(x) for x in val]
+    return val
 
 def reset_mongo_connection():
     """Resets cached client and circuit breaker (useful for tests and connection retries)."""
@@ -58,6 +69,7 @@ def get_mongo_db():
             'serverSelectionTimeoutMS': 3000,
             'connectTimeoutMS': 3000,
             'socketTimeoutMS': 5000,
+            'uuidRepresentation': 'standard',
         }
 
         # Attempt to use certifi root certificates if available
@@ -121,7 +133,7 @@ def log_chat_message(
 
     try:
         now = datetime.now(timezone.utc)
-        safe_meta = metadata or {}
+        safe_meta = _sanitize_for_mongo(metadata or {})
 
         # 1. Upsert conversation tracking record
         conversation_update: Dict[str, Any] = {

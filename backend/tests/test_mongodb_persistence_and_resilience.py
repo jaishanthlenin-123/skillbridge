@@ -137,6 +137,28 @@ class TestMongoDBPersistenceAndResilience:
             assert mock_db.chat_messages.docs[1]["role"] == 'assistant'
             assert mock_db.chat_messages.docs[1]["conversation_id"] == conv_id
 
+    def test_authenticated_user_with_native_uuid_persistence(self):
+        """Test that Python uuid.UUID objects from Django User.id are sanitized and persisted safely."""
+        import uuid
+        mock_db = MockMongoDB("bridgeskill")
+        with patch('apps.assistant.mongo.get_mongo_db', return_value=mock_db):
+            conv_id = "test_conv_uuid_002"
+            raw_user_uuid = uuid.UUID('bff5815c-c563-4c69-8990-5ab7ab4227be')
+
+            # User message with native uuid.UUID
+            saved = log_chat_message(
+                conversation_id=conv_id,
+                role='user',
+                content='Question from logged-in user',
+                metadata={'user_id': raw_user_uuid, 'is_guest': False}
+            )
+            assert saved is True
+            assert len(mock_db.chat_messages.docs) == 1
+            # Must be sanitized to string in document metadata
+            stored_user_id = mock_db.chat_messages.docs[0]["metadata"]["user_id"]
+            assert isinstance(stored_user_id, str)
+            assert stored_user_id == 'bff5815c-c563-4c69-8990-5ab7ab4227be'
+
     def test_guest_workflow_persistence_and_isolation(self):
         """Test guest message persistence, guest_session_id tracking, and cross-session isolation."""
         mock_db = MockMongoDB("bridgeskill")
