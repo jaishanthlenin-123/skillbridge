@@ -1,12 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare, X, Send, Bot, User, Sparkles, ThumbsUp, ThumbsDown,
-  AlertCircle, CheckCircle2, Ticket, RefreshCw, ChevronDown
+  AlertCircle, CheckCircle2, Ticket, RefreshCw, ChevronDown, LifeBuoy
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { ChatMessage } from '../../types';
 
+function isTicketIntent(userText?: string, assistantText?: string): boolean {
+  if (!userText && !assistantText) return false;
+  const u = (userText || '').toLowerCase().trim();
+  const a = (assistantText || '').toLowerCase().trim();
+
+  // Explicit ticket creation/raising intents in user request
+  const userTicketPatterns = [
+    /\b(raise|create|open|submit|file|need|want|make|log)\b.*\b(ticket|support ticket)\b/i,
+    /\b(ticket|support ticket)\b.*\b(raise|create|open|submit|file|form)\b/i,
+    /\b(i want to raise a ticket|raise a ticket|open a ticket|create a ticket|submit a ticket|file a ticket)\b/i,
+    /\b(how do i|how to|where can i)\b.*\b(raise|open|create|submit|file)\b.*\bticket\b/i,
+  ];
+
+  if (userTicketPatterns.some((pattern) => pattern.test(u))) {
+    return true;
+  }
+
+  // If user mentions ticket or support AND assistant explicitly guides towards ticket or support submission
+  const mentionsTicketOrSupport = u.includes('ticket') || u.includes('support');
+  const assistantMentionsTicketAction =
+    a.includes('support ticket') ||
+    a.includes('submit a ticket') ||
+    a.includes('open a ticket') ||
+    a.includes('support page') ||
+    a.includes('support desk') ||
+    a.includes('support form');
+
+  return Boolean(mentionsTicketOrSupport && assistantMentionsTicketAction);
+}
+
 export const ChatWidget: React.FC = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = sessionStorage.getItem('skillbridge_chat_history');
@@ -210,6 +242,13 @@ export const ChatWidget: React.FC = () => {
     sessionStorage.removeItem('skillbridge_chat_history');
   };
 
+  const handleNavigateToSupport = () => {
+    navigate('/support?tab=submit');
+    if (window.innerWidth < 640) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 select-none">
       {/* Floating Launcher Button */}
@@ -306,106 +345,118 @@ export const ChatWidget: React.FC = () => {
               Resume tips
             </button>
             <button
-              onClick={() => setTicketModalOpen(true)}
-              className="shrink-0 px-2.5 py-1 rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 transition-colors flex items-center gap-1"
+              onClick={handleNavigateToSupport}
+              className="shrink-0 px-2.5 py-1 rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <Ticket className="h-3 w-3" />
+              <LifeBuoy className="h-3 w-3" />
               Contact Support
             </button>
           </div>
 
           {/* Messages Feed */}
           <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="h-7 w-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                )}
+            {messages.map((msg, idx) => {
+              const prevUserMsg = idx > 0 && messages[idx - 1]?.role === 'user' ? messages[idx - 1] : undefined;
+              const showRaiseTicketButton =
+                msg.role === 'assistant' &&
+                !msg.ticket_created &&
+                (Boolean(msg.can_create_ticket) || isTicketIntent(prevUserMsg?.content, msg.content));
 
-                <div className={`max-w-[82%] space-y-1.5 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div
-                    className={`p-3 rounded-2xl ${
-                      msg.role === 'user'
-                        ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/20'
-                        : 'bg-slate-800 border border-slate-700/60 text-slate-200 rounded-bl-none'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-
-                    {msg.ticket_created && (
-                      <div className="mt-2.5 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-1.5 font-semibold">
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                        <span>Ticket Number: {msg.ticket_number}</span>
-                      </div>
-                    )}
-
-                    {msg.is_error && msg.retry_text && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center gap-2">
-                        <button
-                          onClick={() => handleSendMessage(msg.retry_text)}
-                          disabled={sending}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium flex items-center gap-1.5 transition-all text-xs cursor-pointer shadow-md shadow-indigo-600/20"
-                        >
-                          <RefreshCw className={`h-3 w-3 ${sending ? 'animate-spin' : ''}`} />
-                          <span>Retry Question</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions & Feedback for Assistant Messages */}
+              return (
+                <div
+                  key={idx}
+                  className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
                   {msg.role === 'assistant' && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 px-1">
-                      <span>{msg.timestamp}</span>
+                    <div className="h-7 w-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                  )}
 
-                      {msg.can_create_ticket && !msg.ticket_created && (
-                        <button
-                          onClick={() => setTicketModalOpen(true)}
-                          className="text-indigo-400 hover:text-indigo-300 font-semibold underline flex items-center gap-1"
-                        >
-                          <Ticket className="h-3 w-3" />
-                          Open Support Ticket
-                        </button>
+                  <div className={`max-w-[82%] space-y-1.5 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div
+                      className={`p-3 rounded-2xl ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/20'
+                          : 'bg-slate-800 border border-slate-700/60 text-slate-200 rounded-bl-none'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+
+                      {msg.ticket_created && (
+                        <div className="mt-2.5 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-1.5 font-semibold">
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          <span>Ticket Number: {msg.ticket_number}</span>
+                        </div>
                       )}
 
-                      <div className="ml-auto flex items-center gap-1">
-                        <button
-                          onClick={() => handleFeedback(idx, 5)}
-                          disabled={feedbackGiven[idx] !== undefined}
-                          className={`p-1 rounded hover:bg-slate-800 transition-colors ${
-                            feedbackGiven[idx] === 5 ? 'text-emerald-400' : 'hover:text-slate-200'
-                          }`}
-                          title="Helpful"
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => handleFeedback(idx, 1)}
-                          disabled={feedbackGiven[idx] !== undefined}
-                          className={`p-1 rounded hover:bg-slate-800 transition-colors ${
-                            feedbackGiven[idx] === 1 ? 'text-rose-400' : 'hover:text-slate-200'
-                          }`}
-                          title="Not helpful"
-                        >
-                          <ThumbsDown className="h-3 w-3" />
-                        </button>
+                      {/* Prominent Raise Support Ticket Action Button */}
+                      {showRaiseTicketButton && (
+                        <div className="mt-3 pt-2.5 border-t border-slate-700/60">
+                          <button
+                            type="button"
+                            onClick={handleNavigateToSupport}
+                            className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center gap-2 transition-all text-xs cursor-pointer shadow-lg shadow-indigo-600/25 active:scale-[0.98]"
+                          >
+                            <LifeBuoy className="h-3.5 w-3.5 shrink-0 text-indigo-200" />
+                            <span>Raise Support Ticket</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {msg.is_error && msg.retry_text && (
+                        <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center gap-2">
+                          <button
+                            onClick={() => handleSendMessage(msg.retry_text)}
+                            disabled={sending}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium flex items-center gap-1.5 transition-all text-xs cursor-pointer shadow-md shadow-indigo-600/20"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${sending ? 'animate-spin' : ''}`} />
+                            <span>Retry Question</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions & Feedback for Assistant Messages */}
+                    {msg.role === 'assistant' && (
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 px-1">
+                        <span>{msg.timestamp}</span>
+
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            onClick={() => handleFeedback(idx, 5)}
+                            disabled={feedbackGiven[idx] !== undefined}
+                            className={`p-1 rounded hover:bg-slate-800 transition-colors ${
+                              feedbackGiven[idx] === 5 ? 'text-emerald-400' : 'hover:text-slate-200'
+                            }`}
+                            title="Helpful"
+                          >
+                            <ThumbsUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(idx, 1)}
+                            disabled={feedbackGiven[idx] !== undefined}
+                            className={`p-1 rounded hover:bg-slate-800 transition-colors ${
+                              feedbackGiven[idx] === 1 ? 'text-rose-400' : 'hover:text-slate-200'
+                            }`}
+                            title="Not helpful"
+                          >
+                            <ThumbsDown className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
+                    )}
+                  </div>
+
+                  {msg.role === 'user' && (
+                    <div className="h-7 w-7 rounded-lg bg-slate-700 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                      <User className="h-4 w-4" />
                     </div>
                   )}
                 </div>
-
-                {msg.role === 'user' && (
-                  <div className="h-7 w-7 rounded-lg bg-slate-700 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
-                    <User className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {sending && (
               <div className="flex gap-2.5 justify-start">

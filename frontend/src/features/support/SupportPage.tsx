@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   LifeBuoy, Send, Search, CheckCircle2, AlertCircle, Clock,
   FileQuestion, Bug, Wrench, Shield, ArrowRight
@@ -7,7 +8,20 @@ import { api } from '../../services/api';
 import type { SupportTicket } from '../../types';
 
 export const SupportPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'submit' | 'lookup' | 'history'>('submit');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'submit' | 'lookup' | 'history'>(() => {
+    if (tabParam === 'lookup') return 'lookup';
+    if (tabParam === 'history') return 'history';
+    return 'submit';
+  });
+
+  useEffect(() => {
+    if (tabParam === 'submit' || tabParam === 'lookup' || tabParam === 'history') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   const token = localStorage.getItem('skillbridge_token');
   const userJson = localStorage.getItem('skillbridge_user');
   const user = userJson ? JSON.parse(userJson) : null;
