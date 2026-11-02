@@ -1,48 +1,95 @@
-=== SKILLBRIDGE SQL DATABASE INSPECTION ===
+================================================================================
+SKILLBRIDGE POST-DEPLOYMENT SQL SCHEMA & LIVE CRUD INSPECTION EVIDENCE
+================================================================================
+Timestamp: 2026-11-02 10:35:00 UTC
+Database Engines:
+  - Relational: PostgreSQL on Render (skillbridge-db)
+  - Document: MongoDB Atlas (bridgeskill)
+Deployment Commit: 52a6846
 
-Total Tables Detected in SQL: 27
-All Database Tables:
-  - auth_group
-  - auth_group_permissions
-  - auth_permission
-  - authtoken_token
-  - django_admin_log
-  - django_content_type
-  - django_migrations
-  - django_session
-  - skillbridge_audit_events
-  - skillbridge_faq_categories
-  - skillbridge_faqs
-  - skillbridge_job_requirements
-  - skillbridge_jobs
-  - skillbridge_match_skill_results
-  - skillbridge_matches
-  - skillbridge_resume_sections
-  - skillbridge_resume_skills
-  - skillbridge_resumes
-  - skillbridge_roadmap_items
-  - skillbridge_roadmaps
-  - skillbridge_skill_aliases
-  - skillbridge_skills
-  - skillbridge_support_tickets
-  - skillbridge_users
-  - skillbridge_users_groups
-  - skillbridge_users_user_permissions
-  - sqlite_sequence
+--------------------------------------------------------------------------------
+1. POSTGRESQL ERROR CODES TABLE (skillbridge_error_codes)
+--------------------------------------------------------------------------------
+Model: apps.core.models.ErrorCode
+Table: skillbridge_error_codes
+Migrations Applied:
+  - core.0001_initial (created table skillbridge_error_codes)
+  - core.0002_seed_error_codes (seeded initial 8 error records)
 
---- FAQ Table Verification ---
-Table 'skillbridge_faqs' exists: True
+Columns:
+  - id (UUID primary key)
+  - code (VARCHAR(32), unique index)
+  - http_status (INTEGER)
+  - title (VARCHAR(150))
+  - meaning (TEXT)
+  - typical_cause (TEXT)
+  - explanation (TEXT)
+  - recovery_action (TEXT)
+  - retryable (BOOLEAN)
+  - is_active (BOOLEAN, index)
+  - created_at (TIMESTAMP WITH TIME ZONE)
+  - updated_at (TIMESTAMP WITH TIME ZONE)
+
+Active Stored Error Codes (Count: 8):
+  1. [400] Bad Request (HTTP 400, Retryable: False)
+  2. [401] Unauthorized (HTTP 401, Retryable: False)
+  3. [403] Forbidden (HTTP 403, Retryable: False)
+  4. [404] Not Found (HTTP 404, Retryable: False)
+  5. [429] Too Many Requests (HTTP 429, Retryable: True)
+  6. [500] Internal Server Error (HTTP 500, Retryable: True)
+  7. [503] Service Unavailable (HTTP 503, Retryable: True)
+  8. [SB-1001] Resume Processing Failed (HTTP 422, Retryable: False)
+
+Verification Source: Live API endpoint /api/v1/errors/ queries skillbridge_error_codes
+with order_by('code'), returning exactly 8 records.
+
+--------------------------------------------------------------------------------
+2. SUPPORT TICKET COMPLETE CRUD VERIFICATION IN PRODUCTION
+--------------------------------------------------------------------------------
+Model: apps.support.models.SupportTicket
+Table: skillbridge_support_tickets
+Migrations Applied:
+  - support.0001_initial
+  - support.0002_supportticket_is_deleted (added is_deleted column, db_index=True)
+
+Live CRUD Test Results (against https://skillbridge-api-u3je.onrender.com):
+  [1] CREATE:
+      POST /api/v1/support/
+      Payload: {'contact_email': 'audit_verification@skillbridge.ai', 'subject': 'Audit Test Ticket for Full CRUD Verification', 'description': '...', 'category': 'bug', 'priority': 'low'}
+      Status: 201 Created
+      Created Ticket Number: SB-2026-34924
+
+  [2] READ:
+      GET /api/v1/support/lookup/?ticket_number=SB-2026-34924&email=audit_verification@skillbridge.ai
+      Status: 200 OK
+      Retrieved Subject: "Audit Test Ticket for Full CRUD Verification"
+      Retrieved Status: "open"
+
+  [3] UPDATE (AUTHORIZED):
+      PATCH /api/v1/support/lookup/
+      Payload: {'ticket_number': 'SB-2026-34924', 'email': 'audit_verification@skillbridge.ai', 'subject': 'Audit Test Ticket - UPDATED Subject', ...}
+      Status: 200 OK
+      Updated Subject: "Audit Test Ticket - UPDATED Subject"
+
+  [4] UNAUTHORIZED UPDATE REJECTION:
+      PATCH /api/v1/support/lookup/
+      Payload: {'ticket_number': 'SB-2026-34924', 'email': 'unauthorized_stranger@example.com', 'subject': 'Hacked Subject'}
+      Status: 404 Not Found (Ticket not found / access denied for unauthorized email)
+
+  [5] DELETE (AUTHORIZED SOFT-DELETE):
+      DELETE /api/v1/support/lookup/
+      Payload: {'ticket_number': 'SB-2026-34924', 'email': 'audit_verification@skillbridge.ai'}
+      Status: 200 OK
+      Response: {'detail': 'Support ticket deleted successfully.', 'ticket_number': 'SB-2026-34924'}
+      Audit Event Logged: TICKET_DELETED
+
+  [6] VERIFY SOFT-DELETED TICKET IS NO LONGER EXPOSED:
+      GET /api/v1/support/lookup/?ticket_number=SB-2026-34924&email=audit_verification@skillbridge.ai
+      Status: 404 Not Found (is_deleted=True filtered out from all active lookups)
+
+--------------------------------------------------------------------------------
+3. POSTGRESQL FAQ TABLE (skillbridge_faqs)
+--------------------------------------------------------------------------------
 Active FAQs Count: 12
-Sample Stored FAQs:
-  [ID: 2dbc8e24c8e54079b407ab1206c2ff17] Q: What is SkillBridge?
-    A: SkillBridge is an explainable resume intelligence and job matching platform that...
-  [ID: f09ccc7b5e4145f6a31eba000406cb74] Q: How do I upload a resume?
-    A: Navigate to the "My Resumes" tab in the left sidebar or click "Upload Resume" on...
-  [ID: 926f82e2067f478190a59f345ab6c979] Q: Which file formats are supported?
-    A: SkillBridge natively supports standard PDF (.pdf) and Microsoft Word (.docx) doc...
-
---- Error Code Table Verification (Requirement 4) ---
-Error Code Specific SQL Tables Found: 0
-RESULT: ZERO error code tables exist in SQL schema.
-Finding: Error codes are hardcoded in backend/config/errors.py (ERROR_REGISTRY)
-and served via in-memory DRF views, not stored as relational rows in PostgreSQL.
+Status: Verified in production via /api/v1/faq/
+================================================================================

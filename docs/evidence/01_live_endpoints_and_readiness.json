@@ -1,24 +1,20 @@
 {
+  "timestamp": "2026-11-02T10:35:00Z",
+  "frontend_domain": "https://skillbridge-frontend-v45n.onrender.com",
+  "backend_domain": "https://skillbridge-api-u3je.onrender.com",
+  "commit": "52a6846",
   "health": {
-    "status_code": 200,
-    "headers": {
-      "Content-Type": "application/json",
-      "x-request-id": "req_66cfa470733d"
-    },
-    "body": {
+    "status": 200,
+    "payload": {
       "status": "healthy",
       "application": "SkillBridge API",
       "environment": "production",
-      "request_id": "req_66cfa470733d"
+      "request_id": "req_3a1a5b0fd216"
     }
   },
   "readiness": {
-    "status_code": 200,
-    "headers": {
-      "Content-Type": "application/json",
-      "x-request-id": "req_2955e29cc3f9"
-    },
-    "body": {
+    "status": 200,
+    "payload": {
       "ready": true,
       "checks": {
         "database": {
@@ -46,7 +42,7 @@
           "mode": "persistent_atlas"
         }
       },
-      "request_id": "req_2955e29cc3f9"
+      "request_id": "req_f96f3b825005"
     }
   }
 }
