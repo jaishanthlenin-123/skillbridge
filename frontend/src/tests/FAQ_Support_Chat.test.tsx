@@ -6,6 +6,7 @@ import { FAQPage } from '../features/faq/FAQPage';
 import { SupportPage } from '../features/support/SupportPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
 import { ChatWidget } from '../components/Chat/ChatWidget';
+import { api } from '../services/api';
 
 // Mock api service
 vi.mock('../services/api', () => ({
@@ -121,5 +122,59 @@ describe('Phase 2 Frontend Upgrades', () => {
     expect(screen.getByText(/Error 404 — Page Not Found/i)).toBeInTheDocument();
     expect(screen.getByText(/Return to Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Ask the Assistant/i)).toBeInTheDocument();
+  });
+
+  it('submits thumbs-up feedback and allows changing to thumbs-down', async () => {
+    vi.mocked(api.sendAssistantFeedback).mockResolvedValue({
+      message: 'Feedback received. Thank you!',
+      conversation_id: 'test_conv',
+      persisted_to_mongo: true,
+    });
+
+    render(
+      <BrowserRouter>
+        <ChatWidget />
+      </BrowserRouter>
+    );
+
+    // Open chat widget
+    const launcher = screen.getByLabelText(/Open AI Assistant/i);
+    fireEvent.click(launcher);
+
+    // Initial assistant welcome message has thumbs-up and thumbs-down buttons
+    const thumbsUpBtn = screen.getAllByRole('button', { name: /Helpful response/i })[0];
+    const thumbsDownBtn = screen.getAllByRole('button', { name: /Not helpful response/i })[0];
+
+    expect(thumbsUpBtn).toBeInTheDocument();
+    expect(thumbsDownBtn).toBeInTheDocument();
+
+    // Click thumbs-up
+    fireEvent.click(thumbsUpBtn);
+
+    await waitFor(() => {
+      expect(api.sendAssistantFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rating: 5,
+          comment: 'thumbs_up',
+        })
+      );
+    });
+
+    // Clicking thumbs-up again should NOT send duplicate API call
+    fireEvent.click(thumbsUpBtn);
+    expect(vi.mocked(api.sendAssistantFeedback)).toHaveBeenCalledTimes(1);
+
+    // Click thumbs-down to change rating safely
+    fireEvent.click(thumbsDownBtn);
+
+    await waitFor(() => {
+      expect(api.sendAssistantFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rating: 1,
+          comment: 'thumbs_down',
+        })
+      );
+    });
+    expect(vi.mocked(api.sendAssistantFeedback)).toHaveBeenCalledTimes(2);
   });
 });

@@ -51,6 +51,7 @@ export const ChatWidget: React.FC = () => {
     }
     return [
       {
+        id: 'msg_welcome',
         role: 'assistant',
         content: 'Hello! I am your SkillBridge Career Assistant. You can ask me how skill matching works, explore personalized learning roadmaps, ask for tips to improve your resume, or request support.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -78,6 +79,8 @@ export const ChatWidget: React.FC = () => {
   });
 
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, number>>({});
+  const [feedbackLoading, setFeedbackLoading] = useState<Record<number, boolean>>({});
+  const [feedbackError, setFeedbackError] = useState<Record<number, string | null>>({});
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [ticketEmail, setTicketEmail] = useState('');
   const [ticketSubject, setTicketSubject] = useState('');
@@ -128,6 +131,7 @@ export const ChatWidget: React.FC = () => {
     if (!textToSend.trim() || sending) return;
 
     const userMsg: ChatMessage = {
+      id: `msg_user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       role: 'user',
       content: textToSend.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -150,6 +154,7 @@ export const ChatWidget: React.FC = () => {
       }
 
       const assistantMsg: ChatMessage = {
+        id: `msg_asst_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         role: 'assistant',
         content: resp.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -217,14 +222,32 @@ export const ChatWidget: React.FC = () => {
   };
 
   const handleFeedback = async (msgIndex: number, rating: number) => {
+    // Prevent redundant click if already rated with this exact value
+    if (feedbackGiven[msgIndex] === rating) return;
+    if (feedbackLoading[msgIndex]) return;
+
+    const targetMsg = messages[msgIndex];
+    const messageId = targetMsg?.id || `msg_${conversationId}_${msgIndex}`;
+    const comment = rating === 5 ? 'thumbs_up' : 'thumbs_down';
+
+    setFeedbackLoading((prev) => ({ ...prev, [msgIndex]: true }));
+    setFeedbackError((prev) => ({ ...prev, [msgIndex]: null }));
+
     try {
       await api.sendAssistantFeedback({
         conversation_id: conversationId,
         rating,
+        comment,
+        message_id: messageId,
       });
       setFeedbackGiven((prev) => ({ ...prev, [msgIndex]: rating }));
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setFeedbackError((prev) => ({
+        ...prev,
+        [msgIndex]: 'Failed to save feedback. Tap to retry.',
+      }));
+    } finally {
+      setFeedbackLoading((prev) => ({ ...prev, [msgIndex]: false }));
     }
   };
 
@@ -420,29 +443,75 @@ export const ChatWidget: React.FC = () => {
 
                     {/* Actions & Feedback for Assistant Messages */}
                     {msg.role === 'assistant' && (
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 px-1">
-                        <span>{msg.timestamp}</span>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 px-1 pt-0.5">
+                        <span className="shrink-0">{msg.timestamp}</span>
 
-                        <div className="ml-auto flex items-center gap-1">
+                        <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                          {/* Inline Feedback Error Message */}
+                          {feedbackError[idx] && (
+                            <span
+                              className="text-[10px] text-rose-400 flex items-center gap-1 cursor-pointer hover:underline"
+                              onClick={() => setFeedbackError((prev) => ({ ...prev, [idx]: null }))}
+                              title={feedbackError[idx]!}
+                            >
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span className="hidden sm:inline">Failed to save</span>
+                            </span>
+                          )}
+
+                          {/* Feedback confirmation label */}
+                          {feedbackGiven[idx] !== undefined && !feedbackLoading[idx] && (
+                            <span className="text-[10px] text-slate-400 font-medium hidden xs:inline">
+                              {feedbackGiven[idx] === 5 ? 'Helpful' : 'Not helpful'}
+                            </span>
+                          )}
+
+                          {/* Thumbs Up Button */}
                           <button
+                            type="button"
                             onClick={() => handleFeedback(idx, 5)}
-                            disabled={feedbackGiven[idx] !== undefined}
-                            className={`p-1 rounded hover:bg-slate-800 transition-colors ${
-                              feedbackGiven[idx] === 5 ? 'text-emerald-400' : 'hover:text-slate-200'
+                            disabled={feedbackLoading[idx]}
+                            aria-label="Helpful response"
+                            title={feedbackGiven[idx] === 5 ? 'You rated this helpful' : 'Mark as helpful'}
+                            className={`p-1.5 sm:p-1 rounded-lg border transition-all cursor-pointer flex items-center justify-center min-w-[28px] min-h-[28px] touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              feedbackGiven[idx] === 5
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                                : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80'
                             }`}
-                            title="Helpful"
                           >
-                            <ThumbsUp className="h-3 w-3" />
+                            {feedbackLoading[idx] && feedbackGiven[idx] !== 1 ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-300" />
+                            ) : (
+                              <ThumbsUp
+                                className={`h-3.5 w-3.5 transition-transform ${
+                                  feedbackGiven[idx] === 5 ? 'fill-emerald-400 text-emerald-300 scale-110' : ''
+                                }`}
+                              />
+                            )}
                           </button>
+
+                          {/* Thumbs Down Button */}
                           <button
+                            type="button"
                             onClick={() => handleFeedback(idx, 1)}
-                            disabled={feedbackGiven[idx] !== undefined}
-                            className={`p-1 rounded hover:bg-slate-800 transition-colors ${
-                              feedbackGiven[idx] === 1 ? 'text-rose-400' : 'hover:text-slate-200'
+                            disabled={feedbackLoading[idx]}
+                            aria-label="Not helpful response"
+                            title={feedbackGiven[idx] === 1 ? 'You rated this unhelpful' : 'Mark as unhelpful'}
+                            className={`p-1.5 sm:p-1 rounded-lg border transition-all cursor-pointer flex items-center justify-center min-w-[28px] min-h-[28px] touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              feedbackGiven[idx] === 1
+                                ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 shadow-sm shadow-rose-500/20'
+                                : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80'
                             }`}
-                            title="Not helpful"
                           >
-                            <ThumbsDown className="h-3 w-3" />
+                            {feedbackLoading[idx] && feedbackGiven[idx] !== 5 ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-300" />
+                            ) : (
+                              <ThumbsDown
+                                className={`h-3.5 w-3.5 transition-transform ${
+                                  feedbackGiven[idx] === 1 ? 'fill-rose-400 text-rose-300 scale-110' : ''
+                                }`}
+                              />
+                            )}
                           </button>
                         </div>
                       </div>

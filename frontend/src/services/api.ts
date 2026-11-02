@@ -327,7 +327,12 @@ export const api = {
     persisted_user_message?: boolean;
     persisted_assistant_message?: boolean;
   }>('/assistant/chat/', { method: 'POST', body: JSON.stringify(data) }),
-  sendAssistantFeedback: (data: { conversation_id: string; rating: number; comment?: string }) =>
+  sendAssistantFeedback: (data: {
+    conversation_id: string;
+    rating: number;
+    comment?: string;
+    message_id?: string;
+  }) =>
     request<{ message: string; conversation_id: string; persisted_to_mongo: boolean }>(
       '/assistant/feedback/',
       { method: 'POST', body: JSON.stringify(data) }
