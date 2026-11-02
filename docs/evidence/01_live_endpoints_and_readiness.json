@@ -1,0 +1,52 @@
+{
+  "health": {
+    "status_code": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "x-request-id": "req_66cfa470733d"
+    },
+    "body": {
+      "status": "healthy",
+      "application": "SkillBridge API",
+      "environment": "production",
+      "request_id": "req_66cfa470733d"
+    }
+  },
+  "readiness": {
+    "status_code": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "x-request-id": "req_2955e29cc3f9"
+    },
+    "body": {
+      "ready": true,
+      "checks": {
+        "database": {
+          "status": "up",
+          "engine": "postgresql"
+        },
+        "ml_service": {
+          "status": "down",
+          "fallback_active": true
+        },
+        "gemini_llm": {
+          "configured": true,
+          "primary_model": "gemini-3.1-flash-lite",
+          "fallback_models": [
+            "gemini-3.5-flash-lite",
+            "gemini-flash-lite-latest"
+          ],
+          "model": "gemini-3.1-flash-lite",
+          "mode": "live_genai"
+        },
+        "mongodb_atlas": {
+          "status": "up",
+          "configured": true,
+          "database": "bridgeskill",
+          "mode": "persistent_atlas"
+        }
+      },
+      "request_id": "req_2955e29cc3f9"
+    }
+  }
+}

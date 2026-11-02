@@ -1,0 +1,48 @@
+=== SKILLBRIDGE SQL DATABASE INSPECTION ===
+
+Total Tables Detected in SQL: 27
+All Database Tables:
+  - auth_group
+  - auth_group_permissions
+  - auth_permission
+  - authtoken_token
+  - django_admin_log
+  - django_content_type
+  - django_migrations
+  - django_session
+  - skillbridge_audit_events
+  - skillbridge_faq_categories
+  - skillbridge_faqs
+  - skillbridge_job_requirements
+  - skillbridge_jobs
+  - skillbridge_match_skill_results
+  - skillbridge_matches
+  - skillbridge_resume_sections
+  - skillbridge_resume_skills
+  - skillbridge_resumes
+  - skillbridge_roadmap_items
+  - skillbridge_roadmaps
+  - skillbridge_skill_aliases
+  - skillbridge_skills
+  - skillbridge_support_tickets
+  - skillbridge_users
+  - skillbridge_users_groups
+  - skillbridge_users_user_permissions
+  - sqlite_sequence
+
+--- FAQ Table Verification ---
+Table 'skillbridge_faqs' exists: True
+Active FAQs Count: 12
+Sample Stored FAQs:
+  [ID: 2dbc8e24c8e54079b407ab1206c2ff17] Q: What is SkillBridge?
+    A: SkillBridge is an explainable resume intelligence and job matching platform that...
+  [ID: f09ccc7b5e4145f6a31eba000406cb74] Q: How do I upload a resume?
+    A: Navigate to the "My Resumes" tab in the left sidebar or click "Upload Resume" on...
+  [ID: 926f82e2067f478190a59f345ab6c979] Q: Which file formats are supported?
+    A: SkillBridge natively supports standard PDF (.pdf) and Microsoft Word (.docx) doc...
+
+--- Error Code Table Verification (Requirement 4) ---
+Error Code Specific SQL Tables Found: 0
+RESULT: ZERO error code tables exist in SQL schema.
+Finding: Error codes are hardcoded in backend/config/errors.py (ERROR_REGISTRY)
+and served via in-memory DRF views, not stored as relational rows in PostgreSQL.

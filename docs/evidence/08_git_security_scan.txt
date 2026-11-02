@@ -1,0 +1,20 @@
+=== SKILLBRIDGE GIT SECURITY & SECRETS AUDIT ===
+
+1. Tracked Files Matching *.env*:
+.env.example
+
+2. .gitignore Entries for Environment Secrets:
+.gitignore:# Virtual environments
+.gitignore:.venv/
+.gitignore:venv/
+.gitignore:.env
+.gitignore:.env.local
+.gitignore:.env.*.local
+
+3. Tracked Test File Credential Finding:
+File: backend/tests/verify_live_mongo_persistence.py
+Tracked in Git: True
+Committed in Commit: c7050ad test(mongo): add live Atlas verification script for automated persistence testing
+Status: CRITICAL FINDING - File contains hardcoded MongoDB Atlas URI with plaintext username & password:
+  Pattern: mongodb+srv://jaishanthlenin_db_user:[REDACTED_PASSWORD]@bridgeskill.54q70n4.mongodb.net/
+Recommendation: Remove file from Git tracking, purge from git history (git-filter-repo / BFG), and rotate MongoDB Atlas credentials.

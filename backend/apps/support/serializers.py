@@ -7,9 +7,9 @@ class SupportTicketSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'ticket_number', 'contact_email', 'subject', 'description',
             'category', 'priority', 'status', 'conversation_id', 'diagnostic_id',
-            'created_at', 'updated_at'
+            'is_deleted', 'created_at', 'updated_at'
         )
-        read_only_fields = ('id', 'ticket_number', 'status', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'ticket_number', 'is_deleted', 'created_at', 'updated_at')
 
 class SupportTicketCreateSerializer(serializers.ModelSerializer):
     contact_email = serializers.EmailField(required=False)
@@ -29,7 +29,21 @@ class SupportTicketCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'contact_email': 'Email is required for unauthenticated support submissions.'})
         return attrs
 
-class SupportTicketStatusUpdateSerializer(serializers.ModelSerializer):
+class SupportTicketUserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Permitted updates for the ticket owner (subject, description, category, or voluntarily closing ticket).
+    Privileged fields like priority, staff assignment, and internal statuses remain protected.
+    """
+    status = serializers.ChoiceField(choices=[('closed', 'Closed'), ('open', 'Open')], required=False)
+
     class Meta:
         model = SupportTicket
-        fields = ('status', 'priority')
+        fields = ('subject', 'description', 'category', 'status')
+
+class SupportTicketStatusUpdateSerializer(serializers.ModelSerializer):
+    """
+    Privileged update serializer for administrative and staff users.
+    """
+    class Meta:
+        model = SupportTicket
+        fields = ('status', 'priority', 'category', 'subject', 'description')

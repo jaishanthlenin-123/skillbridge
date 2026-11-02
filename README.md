@@ -39,9 +39,12 @@ Modern hiring processes often rely on opaque Applicant Tracking Systems (ATS) th
   - Persistent, non-intrusive chat widget accessible across all pages (Dashboard, Jobs, Resumes, Matches, Roadmaps, FAQ, Support, 404, 500, Login, Register).
   - Contextual responses grounded in PostgreSQL FAQ records.
   - Explanations of platform error codes and instant support ticket creation.
-- **Support Ticket Desk**:
+- **Support Ticket Desk (Complete CRUD)**:
   - PostgreSQL-backed ticketing system with automated reference tracking (`SB-YYYY-XXXXX`).
-  - Supports both guest and registered user submissions with status tracking.
+  - Full CRUD lifecycle: Create tickets (authenticated & guest), Read/Track status, Update permitted fields or close tickets, and Delete/Cancel tickets with audit logging.
+- **Database-Backed Error Code Registry**:
+  - PostgreSQL relational table (`skillbridge_error_codes`) storing all 8 canonical error codes (`400`, `401`, `403`, `404`, `429`, `500`, `503`, `SB-1001`).
+  - Served via `/api/v1/errors/` and retrieved dynamically by the Career Assistant.
 - **Centralized Help & FAQ**:
   - PostgreSQL-persisted FAQ repository categorized by General, Resumes, Matching, Roadmaps, Account, and Security.
   - Real-time client-side search and category filtering.
@@ -225,7 +228,8 @@ Stores all relational business entities:
 - `MatchResult` (Hybrid match scores, component breakdowns, missing skills, strengths).
 - `Roadmap` & `RoadmapMilestone` (Personalized learning roadmaps, resources, and project prompts).
 - `FAQ` & `FAQCategory` (Active knowledge base items used for UI display and assistant grounding).
-- `SupportTicket` (Support tickets with unique `SB-YYYY-XXXXX` reference codes).
+- `SupportTicket` (Support tickets with unique `SB-YYYY-XXXXX` reference codes, full CRUD support, and soft-delete audit trail).
+- `ErrorCode` (Standardized platform error codes stored in `skillbridge_error_codes` and served via `/api/v1/errors/`).
 
 ### MongoDB Atlas (Conversational & Telemetry Logs)
 Used specifically for unstructured conversational logs:
@@ -255,7 +259,9 @@ All core API endpoints are prefixed with `/api/v1/`:
 | `/api/v1/matches/<id>/` | GET | Token / Guest | Retrieve match breakdown and recommendations |
 | `/api/v1/roadmaps/<id>/` | GET | Token / Guest | View learning roadmap milestones and resources |
 | `/api/v1/faq/` | GET | No | Retrieve active FAQs grouped by category |
-| `/api/v1/support/tickets/` | POST, GET | No | Create or track support ticket |
+| `/api/v1/support/` | GET, POST | AllowAny (POST) / Token (GET) | Create ticket or list authenticated user tickets |
+| `/api/v1/support/<id>/` | GET, PATCH, DELETE | Token / Owner | Full CRUD: Retrieve, update details, or delete ticket |
+| `/api/v1/support/lookup/` | GET, PATCH, DELETE | No | Public ticket tracking, detail editing, and cancellation |
 | `/api/v1/assistant/chat/` | POST | No | Query AI Assistant (grounded in PostgreSQL FAQs) |
 | `/api/v1/integrations/github/` | GET | Token / Guest | Fetch developer profile insights |
 
@@ -297,7 +303,7 @@ SkillBridge integrates with the public GitHub REST API to correlate a candidate'
 
 ### Test Execution Commands
 ```bash
-# 1. Full Backend Django Test Suite (33 tests)
+# 1. Full Backend Django Test Suite (66 tests)
 .venv\Scripts\pytest backend/tests/ -v
 
 # 2. FastAPI ML Microservice Test Suite (9 tests)
@@ -308,7 +314,15 @@ cd frontend && npm run build
 ```
 
 ### Actual Measured Test Results
-- **Backend Test Suite**: **33 passed in 56.45s** (100% pass rate).
+- **Backend Test Suite**: **66 passed in 65.05s** (100% pass rate across 8 test suites).
+  - Includes `test_auth_and_ownership.py` (6 tests).
+  - Includes `test_gemini_assistant_regression.py` (13 tests).
+  - Includes `test_guest_workflow.py` (9 tests).
+  - Includes `test_matches_and_roadmaps.py` (2 tests).
+  - Includes `test_mongodb_persistence_and_resilience.py` (10 tests).
+  - Includes `test_phase2_upgrades.py` (13 tests, including SQL error codes and complete support ticket CRUD).
+  - Includes `test_resumes_and_jobs.py` (5 tests).
+  - Includes `test_model_router_and_resilience.py` (8 tests).
   - Includes `test_guest_workflow.py` (9 tests covering guest session issuance, PDF/DOCX uploads, isolated access, quota limits, registration conversion, and session discard).
   - Includes `test_phase2_upgrades.py` (covering FAQ grounded assistant, support ticket creation, error registry, GitHub timeout/fallback, and readiness probe).
   - Includes existing model, ownership, resume storage, and matching pipeline tests.
@@ -331,8 +345,8 @@ SkillBridge is configured for automated deployment on [Render](https://render.co
 
 | Service | Type | Environment | Internal Name | Public Production URL |
 |---|---|---|---|---|
-| **Frontend** | Static Site | Node (Vite build) | `skillbridge-frontend` | `https://skillbridge-frontend.onrender.com` |
-| **Backend** | Web Service | Python 3.11 (Gunicorn + Whitenoise) | `skillbridge-api` | `https://skillbridge-api.onrender.com` |
+| **Frontend** | Static Site | Node (Vite build) | `skillbridge-frontend` | `https://skillbridge-frontend-v45n.onrender.com` |
+| **Backend** | Web Service | Python 3.11 (Gunicorn + Whitenoise) | `skillbridge-api` | `https://skillbridge-api-u3je.onrender.com` |
 | **ML Microservice** | Web Service | Python 3.11 (Uvicorn + FastAPI) | `skillbridge-ml` | `https://skillbridge-ml.onrender.com` |
 | **Database** | Managed Database | PostgreSQL 15 | `skillbridge-db` | Internal connection via `DATABASE_URL` |
 
@@ -343,11 +357,16 @@ SkillBridge is configured for automated deployment on [Render](https://render.co
 
 ### Deployment Status
 - **GitHub Target Repository**: [`https://github.com/jaishanthlenin-123/skillbridge`](https://github.com/jaishanthlenin-123/skillbridge)
-- **Local Application (Fully Verified & Operational)**:
+- **Live Production Deployment (Render Cloud HTTPS)**:
+  - **Live Frontend**: [`https://skillbridge-frontend-v45n.onrender.com`](https://skillbridge-frontend-v45n.onrender.com)
+  - **Live Backend API**: [`https://skillbridge-api-u3je.onrender.com`](https://skillbridge-api-u3je.onrender.com)
+  - **API Health Check**: [`https://skillbridge-api-u3je.onrender.com/api/v1/health/`](https://skillbridge-api-u3je.onrender.com/api/v1/health/)
+  - **API Readiness Check**: [`https://skillbridge-api-u3je.onrender.com/api/v1/readiness/`](https://skillbridge-api-u3je.onrender.com/api/v1/readiness/)
+  - **Error Registry**: [`https://skillbridge-api-u3je.onrender.com/api/v1/errors/`](https://skillbridge-api-u3je.onrender.com/api/v1/errors/)
+- **Local Development Environment**:
   - Frontend: `http://localhost:5173/`
   - Backend API: `http://127.0.0.1:8080/api/v1/`
   - ML Microservice: `http://127.0.0.1:8001/`
-- **Render Cloud HTTPS Deployment**: *Ready for automated provisioning via `render.yaml` Blueprint once code is pushed to GitHub.*
 
 ### One-Click Render Deployment Instructions
 1. Create empty repository `skillbridge` on GitHub: [https://github.com/new](https://github.com/new).

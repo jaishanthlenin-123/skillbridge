@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   LifeBuoy, Send, Search, CheckCircle2, AlertCircle, Clock,
-  FileQuestion, Bug, Wrench, Shield, ArrowRight
+  FileQuestion, Bug, Wrench, Shield, ArrowRight, Edit3, Trash2, X, Check
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { SupportTicket } from '../../types';
@@ -47,6 +47,16 @@ export const SupportPage: React.FC = () => {
   const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
+  // CRUD Edit / Delete State
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('general');
+  const [editStatus, setEditStatus] = useState('open');
+  const [editLoading, setEditLoading] = useState(false);
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     if (activeTab === 'history' && token) {
       loadMyTickets();
@@ -69,6 +79,7 @@ export const SupportPage: React.FC = () => {
     e.preventDefault();
     setFormError(null);
     setCreatedTicket(null);
+    setActionMessage(null);
 
     if (!email.trim() && !token) {
       setFormError('Contact email is required.');
@@ -102,6 +113,8 @@ export const SupportPage: React.FC = () => {
     e.preventDefault();
     setLookupError(null);
     setLookupResult(null);
+    setActionMessage(null);
+    setEditingTicketId(null);
 
     if (!lookupNumber.trim() || !lookupEmail.trim()) {
       setLookupError('Both Ticket Number and Contact Email are required.');
@@ -113,9 +126,106 @@ export const SupportPage: React.FC = () => {
       const ticket = await api.lookupSupportTicket(lookupNumber.trim(), lookupEmail.trim());
       setLookupResult(ticket);
     } catch (err: any) {
-      setLookupError(err.message || 'No matching support ticket found.');
+      setLookupError(err.message || 'No matching active support ticket found.');
     } finally {
       setLookupLoading(false);
+    }
+  };
+
+  const handleStartEdit = (ticket: SupportTicket) => {
+    setEditingTicketId(ticket.id);
+    setEditSubject(ticket.subject);
+    setEditDescription(ticket.description);
+    setEditCategory(ticket.category);
+    setEditStatus(ticket.status);
+    setActionMessage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTicketId(null);
+  };
+
+  const handleSaveEdit = async (ticketId: string) => {
+    setEditLoading(true);
+    setActionMessage(null);
+    try {
+      const updated = await api.updateSupportTicket(ticketId, {
+        subject: editSubject.trim(),
+        description: editDescription.trim(),
+        category: editCategory,
+        status: editStatus,
+      });
+      setMyTickets((prev) => prev.map((t) => (t.id === ticketId ? { ...t, ...updated } : t)));
+      if (lookupResult && lookupResult.id === ticketId) {
+        setLookupResult((prev) => (prev ? { ...prev, ...updated } : null));
+      }
+      setEditingTicketId(null);
+      setActionMessage({ type: 'success', text: `Ticket ${updated.ticket_number} updated successfully.` });
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to update ticket.' });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteTicket = async (ticket: SupportTicket) => {
+    if (!window.confirm(`Are you sure you want to cancel / delete ticket ${ticket.ticket_number}?`)) {
+      return;
+    }
+    setDeletingTicketId(ticket.id);
+    setActionMessage(null);
+    try {
+      await api.deleteSupportTicket(ticket.id);
+      setMyTickets((prev) => prev.filter((t) => t.id !== ticket.id));
+      if (lookupResult && lookupResult.id === ticket.id) {
+        setLookupResult(null);
+      }
+      setActionMessage({ type: 'success', text: `Ticket ${ticket.ticket_number} deleted successfully.` });
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to delete ticket.' });
+    } finally {
+      setDeletingTicketId(null);
+    }
+  };
+
+  const handleSaveLookupEdit = async () => {
+    if (!lookupResult) return;
+    setEditLoading(true);
+    setActionMessage(null);
+    try {
+      const updated = await api.updateLookupSupportTicket({
+        ticket_number: lookupNumber.trim(),
+        email: lookupEmail.trim(),
+        subject: editSubject.trim(),
+        description: editDescription.trim(),
+        category: editCategory,
+        status: editStatus,
+      });
+      setLookupResult(updated);
+      setEditingTicketId(null);
+      setActionMessage({ type: 'success', text: `Ticket ${updated.ticket_number} updated successfully.` });
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to update ticket.' });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteLookupTicket = async () => {
+    if (!lookupResult) return;
+    if (!window.confirm(`Are you sure you want to cancel / delete ticket ${lookupResult.ticket_number}?`)) {
+      return;
+    }
+    setEditLoading(true);
+    setActionMessage(null);
+    try {
+      await api.deleteLookupSupportTicket(lookupNumber.trim(), lookupEmail.trim());
+      setLookupResult(null);
+      setActionMessage({ type: 'success', text: 'Support ticket deleted successfully.' });
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to delete ticket.' });
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -146,6 +256,20 @@ export const SupportPage: React.FC = () => {
           Need help with resume parsing, matching analysis, or account issues? Submit a ticket to our engineering team.
         </p>
       </div>
+
+      {/* Global Action Message Banner */}
+      {actionMessage && (
+        <div className={`p-4 rounded-xl text-xs flex items-center justify-between border ${
+          actionMessage.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+        }`}>
+          <span>{actionMessage.text}</span>
+          <button onClick={() => setActionMessage(null)} className="p-1 hover:text-white cursor-pointer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-slate-800 justify-start sm:justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-none pb-0.5">
@@ -200,68 +324,72 @@ export const SupportPage: React.FC = () => {
           )}
 
           {formError && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+            <div className="mb-6 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmitTicket} className="space-y-4">
+            {!token && (
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Your Email Address <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Contact Email Address <span className="text-rose-400">*</span>
+                Issue Category
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Category</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="general">General Inquiry</option>
-                  <option value="parsing">Resume Parsing Issue (SB-1001)</option>
-                  <option value="matching">Match Scoring Issue</option>
-                  <option value="account">Account & Permissions</option>
-                  <option value="bug">Bug Report</option>
-                  <option value="feature">Feature Request</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Priority</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
+              >
+                <option value="general">General Inquiry</option>
+                <option value="matching">Resume Matching Issue</option>
+                <option value="parsing">Resume Parsing Error</option>
+                <option value="account">Account / Login Issue</option>
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+              </select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Subject / Summary <span className="text-rose-400">*</span>
+                Priority Level
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="low">Low Priority</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Subject <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
+                placeholder="Brief summary of the issue"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Brief summary of the issue..."
                 required
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               />
@@ -269,13 +397,13 @@ export const SupportPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Detailed Description <span className="text-rose-400">*</span>
+                Description & Steps to Reproduce <span className="text-rose-400">*</span>
               </label>
               <textarea
-                rows={5}
+                rows={4}
+                placeholder="Provide clear details, including any correlation IDs (X-Request-ID) or displayed error codes (e.g. SB-1001)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Please include any correlation IDs (X-Request-ID), error codes, or document steps to help us troubleshoot..."
                 required
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               />
@@ -343,19 +471,107 @@ export const SupportPage: React.FC = () => {
           </form>
 
           {lookupResult && (
-            <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-700 space-y-3">
+            <div className="p-5 rounded-xl bg-slate-900/80 border border-slate-700 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-white">{lookupResult.ticket_number}</span>
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded border uppercase ${getStatusBadge(lookupResult.status)}`}>
                   {lookupResult.status}
                 </span>
               </div>
-              <h4 className="text-sm font-semibold text-slate-200">{lookupResult.subject}</h4>
-              <p className="text-xs text-slate-400 whitespace-pre-wrap">{lookupResult.description}</p>
-              <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Category: {lookupResult.category}</span>
-                <span>Created: {new Date(lookupResult.created_at).toLocaleString()}</span>
-              </div>
+
+              {editingTicketId === lookupResult.id ? (
+                <div className="space-y-3 pt-2 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject</label>
+                    <input
+                      type="text"
+                      value={editSubject}
+                      onChange={(e) => setEditSubject(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Description</label>
+                    <textarea
+                      rows={3}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">Category</label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white"
+                      >
+                        <option value="general">General</option>
+                        <option value="matching">Matching</option>
+                        <option value="parsing">Parsing</option>
+                        <option value="account">Account</option>
+                        <option value="bug">Bug</option>
+                        <option value="feature">Feature</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
+                      <select
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white"
+                      >
+                        <option value="open">Open</option>
+                        <option value="closed">Closed (Cancel Ticket)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={handleSaveLookupEdit}
+                      disabled={editLoading}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{editLoading ? 'Saving...' : 'Save Updates'}</span>
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h4 className="text-sm font-semibold text-slate-200">{lookupResult.subject}</h4>
+                  <p className="text-xs text-slate-400 whitespace-pre-wrap">{lookupResult.description}</p>
+                  <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>Category: {lookupResult.category}</span>
+                    <span>Created: {new Date(lookupResult.created_at).toLocaleString()}</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
+                    <button
+                      onClick={() => handleStartEdit(lookupResult)}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-indigo-300 border border-indigo-500/30 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      <span>Edit Details</span>
+                    </button>
+                    <button
+                      onClick={handleDeleteLookupTicket}
+                      disabled={editLoading}
+                      className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Cancel Ticket</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -364,8 +580,15 @@ export const SupportPage: React.FC = () => {
       {/* Tab 3: My Tickets (Authenticated) */}
       {activeTab === 'history' && (
         <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
-          <div className="p-5 border-b border-slate-800">
+          <div className="p-5 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-base font-semibold text-white">Your Support Tickets ({myTickets.length})</h3>
+            <button
+              onClick={loadMyTickets}
+              disabled={loadingTickets}
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+            >
+              Refresh
+            </button>
           </div>
 
           {loadingTickets ? (
@@ -379,21 +602,113 @@ export const SupportPage: React.FC = () => {
           ) : (
             <div className="divide-y divide-slate-800/80">
               {myTickets.map((t) => (
-                <div key={t.id} className="p-5 hover:bg-slate-900/40 flex items-center justify-between transition-colors">
-                  <div className="space-y-1 pr-4 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-indigo-400">{t.ticket_number}</span>
-                      <span className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded border ${getStatusBadge(t.status)}`}>
-                        {t.status}
-                      </span>
+                <div key={t.id} className="p-5 hover:bg-slate-900/40 transition-colors">
+                  {editingTicketId === t.id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono font-bold text-indigo-400">{t.ticket_number}</span>
+                        <span className="text-[11px] text-slate-500">Editing Ticket</span>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject</label>
+                        <input
+                          type="text"
+                          value={editSubject}
+                          onChange={(e) => setEditSubject(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Description</label>
+                        <textarea
+                          rows={3}
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-400 mb-1">Category</label>
+                          <select
+                            value={editCategory}
+                            onChange={(e) => setEditCategory(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white"
+                          >
+                            <option value="general">General</option>
+                            <option value="matching">Matching</option>
+                            <option value="parsing">Parsing</option>
+                            <option value="account">Account</option>
+                            <option value="bug">Bug</option>
+                            <option value="feature">Feature</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-400 mb-1">Status</label>
+                          <select
+                            value={editStatus}
+                            onChange={(e) => setEditStatus(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white"
+                          >
+                            <option value="open">Open</option>
+                            <option value="closed">Closed (Cancel Ticket)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleSaveEdit(t.id)}
+                          disabled={editLoading}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>{editLoading ? 'Saving...' : 'Save Changes'}</span>
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <h4 className="text-sm font-semibold text-white truncate">{t.subject}</h4>
-                    <p className="text-xs text-slate-400 line-clamp-1">{t.description}</p>
-                  </div>
-                  <div className="text-right shrink-0 text-xs text-slate-500">
-                    <div>{new Date(t.created_at).toLocaleDateString()}</div>
-                    <div className="capitalize text-[11px] mt-0.5">{t.priority} priority</div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1 pr-4 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-bold text-indigo-400">{t.ticket_number}</span>
+                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded border ${getStatusBadge(t.status)}`}>
+                            {t.status}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-semibold text-white truncate">{t.subject}</h4>
+                        <p className="text-xs text-slate-400 line-clamp-2">{t.description}</p>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-3 pt-1">
+                          <span>Category: {t.category}</span>
+                          <span>Priority: {t.priority}</span>
+                          <span>Created: {new Date(t.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                        <button
+                          onClick={() => handleStartEdit(t)}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-indigo-300 border border-indigo-500/20 rounded text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTicket(t)}
+                          disabled={deletingTicketId === t.id}
+                          className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>{deletingTicketId === t.id ? 'Deleting...' : 'Cancel'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

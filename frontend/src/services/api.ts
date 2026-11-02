@@ -280,6 +280,28 @@ export const api = {
   }) => request<SupportTicket>('/support/', { method: 'POST', body: JSON.stringify(data) }),
   lookupSupportTicket: (ticketNumber: string, email: string) =>
     request<SupportTicket>(`/support/lookup/?ticket_number=${encodeURIComponent(ticketNumber)}&email=${encodeURIComponent(email)}`),
+  updateSupportTicket: (id: string, data: {
+    subject?: string;
+    description?: string;
+    category?: string;
+    status?: string;
+    priority?: string;
+  }) => request<SupportTicket>(`/support/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteSupportTicket: (id: string) =>
+    request<{ detail: string; ticket_number: string }>(`/support/${id}/`, { method: 'DELETE' }),
+  updateLookupSupportTicket: (data: {
+    ticket_number: string;
+    email: string;
+    subject?: string;
+    description?: string;
+    category?: string;
+    status?: string;
+  }) => request<SupportTicket>('/support/lookup/', { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteLookupSupportTicket: (ticketNumber: string, email: string) =>
+    request<{ detail: string; ticket_number: string }>('/support/lookup/', {
+      method: 'DELETE',
+      body: JSON.stringify({ ticket_number: ticketNumber, email }),
+    }),
 
   // Assistant & Chat
   sendAssistantChat: (data: {

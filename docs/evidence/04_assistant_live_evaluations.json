@@ -1,0 +1,84 @@
+{
+  "faq_evaluations": [
+    {
+      "query": "What is SkillBridge?",
+      "status_code": 200,
+      "response": {
+        "conversation_id": "audit_eval_faq1",
+        "guest_session_id": "guest_audit_eval_faq1",
+        "answer": "Hello! I'm your SkillBridge AI Career Assistant. I'd be happy to explain what we do.\n\n**SkillBridge** is an explainable resume intelligence and job matching platform designed to bridge the gap between your current experience and your dream career. \n\nHere is how we help you succeed:\n\n*   **Skill Extraction:** We analyze your resume to identify your core competencies and technical strengths.\n*   **Transparent Match Scores:** Instead of \"black box\" algorithms, we provide hybrid match scores that show you exactly how your skills align with specific job descriptions.\n*   **Gap Identification:** We pinpoint the exact skills you are missing for a target role.\n*   **Personalized Roadmaps:** We generate milestone-based learning paths to help you acquire those missing skills and become a competitive candidate.\n\nEssentially, we turn the job search process into a clear, actionable roadmap. How can I help you get started today?",
+        "mode": "gemini_generated",
+        "model": "gemini-3.1-flash-lite",
+        "attempts": 1,
+        "grounded_faqs": [
+          "b6750796-1b6e-459e-8ef7-2df38c3781e6"
+        ],
+        "can_create_ticket": false,
+        "persisted_to_mongo": true,
+        "persisted_user_message": true,
+        "persisted_assistant_message": true
+      }
+    },
+    {
+      "query": "How do I upload a resume?",
+      "status_code": 200,
+      "response": {
+        "conversation_id": "audit_eval_faq2",
+        "guest_session_id": "guest_audit_eval_faq2",
+        "answer": "Hello! I'd be happy to help you get started.\n\nTo upload your resume to SkillBridge, simply navigate to the **\"My Resumes\"** tab located in the left sidebar, or click the **\"Upload Resume\"** button directly on your dashboard. \n\nYou can then drag and drop your file or browse your computer to select it. Please ensure your file is in **PDF or DOCX** format and is **under 10MB**.\n\nOnce it's uploaded, our system will begin analyzing your skills so we can start matching you with the best-fit roles! Let me know if you have any trouble with the upload.",
+        "mode": "gemini_generated",
+        "model": "gemini-3.1-flash-lite",
+        "attempts": 1,
+        "grounded_faqs": [
+          "b737c6f7-c45c-48e9-908e-7e8451dee3d9",
+          "edefd5b2-97fb-4631-a33d-ee1842ae81f7"
+        ],
+        "can_create_ticket": false,
+        "persisted_to_mongo": true,
+        "persisted_user_message": true,
+        "persisted_assistant_message": true
+      }
+    }
+  ],
+  "error_code_evaluations": [
+    {
+      "query": "What does error SB-1001 mean?",
+      "status_code": 200,
+      "response": {
+        "conversation_id": "audit_eval_err1",
+        "guest_session_id": "guest_audit_eval_err1",
+        "answer": "Hello! I can certainly help you with that.\n\nError **SB-1001** indicates that our system encountered a **Resume Processing Failure**. Essentially, the platform's parsing engine was unable to extract the text from the file you uploaded.\n\nThis typically happens for one of the following reasons:\n*   **Image-only PDF:** The document is a scan or an image without embedded OCR (Optical Character Recognition) text.\n*   **Password Protection:** The file is encrypted or password-protected.\n*   **Corrupted File:** The DOCX or PDF file may be corrupted or use an unsupported binary encoding.\n\n**How to fix it:**\nPlease ensure your resume is a **text-selectable PDF or DOCX file**, is **under 10MB**, and is **not password-protected**. Once you have a clean, text-based version of your document, try uploading it again.\n\nIf you continue to experience issues after checking these requirements, please head over to our **Support page** to submit a bug report, and be sure to include the **SB-1001** error code so our engineering team can assist you further!",
+        "mode": "gemini_generated",
+        "model": "gemini-3.1-flash-lite",
+        "attempts": 1,
+        "grounded_faqs": [
+          "f3362a92-b0fc-4003-b178-c6b7fce84c21",
+          "be0db524-ea18-4ffc-9ffc-248a160f6297"
+        ],
+        "can_create_ticket": false,
+        "persisted_to_mongo": true,
+        "persisted_user_message": true,
+        "persisted_assistant_message": true
+      }
+    },
+    {
+      "query": "What does error 429 mean?",
+      "status_code": 200,
+      "response": {
+        "conversation_id": "audit_eval_err2",
+        "guest_session_id": "guest_audit_eval_err2",
+        "answer": "Hello! I\u2019m your SkillBridge AI Career Assistant.\n\nIf you encounter **Error 429**, it means you have triggered a **\"Too Many Requests\"** status. \n\nIn simple terms, you have exceeded the rate limit for a specific action on our platform\u2014such as resume parsing, AI chat interactions, or running match score operations\u2014within a short period of time.\n\n**How to resolve this:**\nThe best way to recover is to simply **wait a moment** before trying your request again. Our system automatically resets once the rate limit window has passed, and you\u2019ll be able to continue building your career roadmap or refining your resume shortly! \n\nIs there anything else I can help you with today?",
+        "mode": "gemini_generated",
+        "model": "gemini-3.1-flash-lite",
+        "attempts": 1,
+        "grounded_faqs": [
+          "f3362a92-b0fc-4003-b178-c6b7fce84c21"
+        ],
+        "can_create_ticket": false,
+        "persisted_to_mongo": true,
+        "persisted_user_message": true,
+        "persisted_assistant_message": true
+      }
+    }
+  ]
+}

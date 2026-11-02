@@ -9,6 +9,7 @@ from apps.support.models import SupportTicket
 from apps.jobs.models import Job
 from apps.resumes.models import Resume, Skill, ResumeSkill
 from apps.matches.models import MatchResult
+from apps.core.models import ErrorCode
 
 User = get_user_model()
 
@@ -49,7 +50,7 @@ class TestPhase2SkillBridgeUpgrades:
         assert len(search_data) >= 1
         assert any('upload' in item['question'].lower() or 'upload' in item['answer'].lower() for item in search_data)
 
-    # 3. Support Tickets API Tests
+    # 3. Support Tickets API Tests (Complete CRUD Verification)
     def test_support_ticket_creation_guest_and_user(self, client):
         # Guest submission requires contact_email
         fail_resp = client.post('/api/v1/support/', {
@@ -85,8 +86,101 @@ class TestPhase2SkillBridgeUpgrades:
         auth_data = auth_resp.json()
         assert auth_data['contact_email'] == self.user.email
 
+    def test_support_ticket_complete_crud_and_permissions(self, client):
+        client.force_login(self.user)
+        # 1. CREATE
+        create_resp = client.post('/api/v1/support/', {
+            'subject': 'Initial Ticket Subject',
+            'description': 'Initial ticket description before edit.',
+            'category': 'matching',
+        }, content_type='application/json')
+        assert create_resp.status_code == status.HTTP_201_CREATED
+        ticket_data = create_resp.json()
+        ticket_id = ticket_data['id']
+        ticket_number = ticket_data['ticket_number']
+
+        # 2. READ (Detail)
+        detail_resp = client.get(f'/api/v1/support/{ticket_id}/')
+        assert detail_resp.status_code == status.HTTP_200_OK
+        assert detail_resp.json()['subject'] == 'Initial Ticket Subject'
+
+        # 3. UPDATE (Owner can edit permitted fields: subject, description, or close ticket)
+        update_resp = client.patch(f'/api/v1/support/{ticket_id}/', {
+            'subject': 'Updated Ticket Subject by Owner',
+            'description': 'Refined description with extra details.',
+            'status': 'closed',
+        }, content_type='application/json')
+        assert update_resp.status_code == status.HTTP_200_OK
+        updated_data = update_resp.json()
+        assert updated_data['subject'] == 'Updated Ticket Subject by Owner'
+        assert updated_data['description'] == 'Refined description with extra details.'
+        assert updated_data['status'] == 'closed'
+
+        # Unauthorized update by another user must be rejected (404/403)
+        other_user = User.objects.create_user(email='bob_unauth@example.com', password='Password123!')
+        client.force_login(other_user)
+        unauth_update = client.patch(f'/api/v1/support/{ticket_id}/', {
+            'subject': 'Malicious Hijack Attempt',
+        }, content_type='application/json')
+        assert unauth_update.status_code in (status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN)
+
+        # 4. DELETE (Owner can delete/cancel their ticket)
+        client.force_login(self.user)
+        del_resp = client.delete(f'/api/v1/support/{ticket_id}/')
+        assert del_resp.status_code == status.HTTP_200_OK
+
+        # Verify deleted ticket is soft-deleted and inaccessible to regular user queries
+        get_deleted = client.get(f'/api/v1/support/{ticket_id}/')
+        assert get_deleted.status_code == status.HTTP_404_NOT_FOUND
+
+        list_resp = client.get('/api/v1/support/')
+        assert not any(t['id'] == ticket_id for t in list_resp.json())
+
+    def test_support_ticket_public_lookup_crud(self, client):
+        # Create unauthenticated ticket with contact_email
+        create_resp = client.post('/api/v1/support/', {
+            'contact_email': 'public_user@example.com',
+            'subject': 'Public Inquiry',
+            'description': 'Public description.',
+            'category': 'general',
+        }, content_type='application/json')
+        assert create_resp.status_code == status.HTTP_201_CREATED
+        t_data = create_resp.json()
+        t_num = t_data['ticket_number']
+
+        # Lookup Read
+        lookup_get = client.get(f'/api/v1/support/lookup/?ticket_number={t_num}&email=public_user@example.com')
+        assert lookup_get.status_code == status.HTTP_200_OK
+        assert lookup_get.json()['ticket_number'] == t_num
+
+        # Lookup Update
+        lookup_patch = client.patch('/api/v1/support/lookup/', {
+            'ticket_number': t_num,
+            'email': 'public_user@example.com',
+            'description': 'Updated public description text.',
+            'status': 'closed'
+        }, content_type='application/json')
+        assert lookup_patch.status_code == status.HTTP_200_OK
+        assert lookup_patch.json()['description'] == 'Updated public description text.'
+        assert lookup_patch.json()['status'] == 'closed'
+
+        # Lookup Delete
+        lookup_del = client.delete('/api/v1/support/lookup/', {
+            'ticket_number': t_num,
+            'email': 'public_user@example.com'
+        }, content_type='application/json')
+        assert lookup_del.status_code == status.HTTP_200_OK
+
+        # Now lookup returns 404 because ticket is soft-deleted
+        lookup_after_del = client.get(f'/api/v1/support/lookup/?ticket_number={t_num}&email=public_user@example.com')
+        assert lookup_after_del.status_code == status.HTTP_404_NOT_FOUND
+
     # 4. Error Registry & Middleware Tests
     def test_error_registry_and_request_id_middleware(self, client):
+        # Verify stored in SQL database
+        sql_count = ErrorCode.objects.filter(is_active=True).count()
+        assert sql_count >= 8, f"Expected at least 8 error codes in SQL, found {sql_count}"
+
         resp = client.get('/api/v1/errors/')
         assert resp.status_code == status.HTTP_200_OK
         assert 'X-Request-ID' in resp.headers

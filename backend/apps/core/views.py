@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.db import connection
 from django.conf import settings
 from config.errors import ERROR_REGISTRY, get_error_info
+from .models import ErrorCode
 
 class HealthCheckView(views.APIView):
     """
@@ -100,10 +101,21 @@ class ReadinessCheckView(views.APIView):
 class ErrorRegistryListView(views.APIView):
     """
     Exposes the centralized Error Code Registry for frontend inspection and assistant explanations.
+    Backed by PostgreSQL (skillbridge_error_codes) with resilient fallback to ERROR_REGISTRY.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        try:
+            db_errors = list(ErrorCode.objects.filter(is_active=True).order_by('code'))
+            if db_errors:
+                return Response({
+                    'count': len(db_errors),
+                    'errors': [e.to_dict() for e in db_errors]
+                })
+        except Exception:
+            pass
+
         return Response({
             'count': len(ERROR_REGISTRY),
             'errors': list(ERROR_REGISTRY.values())
@@ -112,9 +124,20 @@ class ErrorRegistryListView(views.APIView):
 class ErrorRegistryDetailView(views.APIView):
     """
     Detailed lookup for a specific error code (e.g. 404 or SB-1001).
+    Backed by PostgreSQL (skillbridge_error_codes) with resilient fallback.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, code):
+        clean_code = str(code).strip().upper()
+        try:
+            db_err = ErrorCode.objects.filter(code__iexact=clean_code, is_active=True).first()
+            if not db_err and clean_code.isdigit():
+                db_err = ErrorCode.objects.filter(http_status=int(clean_code), is_active=True).first()
+            if db_err:
+                return Response(db_err.to_dict())
+        except Exception:
+            pass
+
         info = get_error_info(code)
         return Response(info)

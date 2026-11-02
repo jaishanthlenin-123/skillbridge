@@ -6,6 +6,8 @@ from apps.resumes.models import Skill, SkillAlias
 from apps.jobs.models import Job, JobRequirement
 from apps.jobs.extractor import extract_job_requirements
 from apps.faq.models import FAQCategory, FAQ
+from apps.core.models import ErrorCode
+from config.errors import ERROR_REGISTRY
 
 User = get_user_model()
 
@@ -313,4 +315,23 @@ class Command(BaseCommand):
             job_count += 1
 
         self.stdout.write(self.style.SUCCESS(f'Seeded {job_count} sample jobs with parsed requirements.'))
+
+        # 5. Seed Error Codes
+        error_count = 0
+        for code, info in ERROR_REGISTRY.items():
+            err_obj, created_e = ErrorCode.objects.update_or_create(
+                code=code,
+                defaults={
+                    'http_status': info['http_status'],
+                    'title': info['title'],
+                    'meaning': info['meaning'],
+                    'typical_cause': info.get('typical_cause', ''),
+                    'explanation': info['explanation'],
+                    'recovery_action': info['recovery_action'],
+                    'retryable': info['retryable'],
+                    'is_active': True,
+                }
+            )
+            error_count += 1
+        self.stdout.write(self.style.SUCCESS(f'Seeded {error_count} distinct SQL Error Codes into skillbridge_error_codes.'))
         self.stdout.write(self.style.SUCCESS('SkillBridge database seeding completed successfully.'))

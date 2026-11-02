@@ -1,0 +1,126 @@
+{
+  "status_code": 200,
+  "total_faqs_returned": 12,
+  "faqs": [
+    {
+      "id": "b6750796-1b6e-459e-8ef7-2df38c3781e6",
+      "category": "a21b80d9-d4f1-43a7-89ed-51a4cfca2c2b",
+      "category_name": "General",
+      "question": "What is SkillBridge?",
+      "answer": "SkillBridge is an explainable resume intelligence and job matching platform that extracts skills, computes transparent hybrid match scores, identifies skill gaps, and provides personalized learning roadmaps.",
+      "order_index": 1,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.498321Z"
+    },
+    {
+      "id": "b737c6f7-c45c-48e9-908e-7e8451dee3d9",
+      "category": "152a9567-c9cd-47bf-883d-d58c09c54040",
+      "category_name": "Resumes",
+      "question": "How do I upload a resume?",
+      "answer": "Navigate to the \"My Resumes\" tab in the left sidebar or click \"Upload Resume\" on your dashboard. Drag and drop your file or browse to select a PDF or DOCX file under 10MB.",
+      "order_index": 2,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.504801Z"
+    },
+    {
+      "id": "91505a1c-113b-4238-b26f-ff1a75d34343",
+      "category": "152a9567-c9cd-47bf-883d-d58c09c54040",
+      "category_name": "Resumes",
+      "question": "Which file formats are supported?",
+      "answer": "SkillBridge natively supports standard PDF (.pdf) and Microsoft Word (.docx) documents. Scanned image-only PDFs should be OCR-processed before upload to ensure text can be extracted.",
+      "order_index": 3,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.508340Z"
+    },
+    {
+      "id": "edefd5b2-97fb-4631-a33d-ee1842ae81f7",
+      "category": "f3bd53d9-d7eb-4ce1-9a45-cb243689276b",
+      "category_name": "Matching",
+      "question": "How does resume matching work?",
+      "answer": "SkillBridge uses a hybrid scoring pipeline combining: 1) Requirement-weighted skill coverage (45%), 2) Canonical skill overlap (35%), and 3) Semantic embedding similarity (20%) using sentence transformers. The result is completely explainable without black-box bias.",
+      "order_index": 4,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.514023Z"
+    },
+    {
+      "id": "f3362a92-b0fc-4003-b178-c6b7fce84c21",
+      "category": "f3bd53d9-d7eb-4ce1-9a45-cb243689276b",
+      "category_name": "Matching",
+      "question": "What does the match score mean?",
+      "answer": "The match score ranges from 0% to 100%. A score of 80%+ indicates strong qualification alignment. Scores between 60% and 79% represent solid candidate potential with a few missing requirements. Scores below 60% highlight critical missing mandatory skills that need upskilling.",
+      "order_index": 5,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.578642Z"
+    },
+    {
+      "id": "d2de002f-3e2f-420a-a2b5-5a023285eccc",
+      "category": "f14c7e7a-17d7-4d2a-ba16-f82425970c68",
+      "category_name": "Job Library",
+      "question": "How do I add a job description?",
+      "answer": "Go to the \"Job Library\" page and click \"Add Job Description\". Paste the role title, company name, location, and full job description text. The platform will automatically extract mandatory and preferred skill requirements.",
+      "order_index": 6,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.583692Z"
+    },
+    {
+      "id": "79126c32-5a00-476d-bb88-6de329ba311f",
+      "category": "f3bd53d9-d7eb-4ce1-9a45-cb243689276b",
+      "category_name": "Matching",
+      "question": "How are missing skills identified?",
+      "answer": "The system compares the mandatory and preferred requirements parsed from the job description against the verified skills detected in your resume. Any required skill without matching text evidence is classified as a missing skill gap.",
+      "order_index": 7,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.587769Z"
+    },
+    {
+      "id": "8e67c848-0b2b-4bd5-b76a-871afc2653a7",
+      "category": "6d1c9012-3f9d-4498-b2f8-ae71e7968d18",
+      "category_name": "Audit & History",
+      "question": "How do I view previous matches?",
+      "answer": "All evaluations are automatically saved. You can view past match scores, breakdowns, and detailed HTML audit reports under the \"Audit & History\" and \"Match Analysis\" tabs.",
+      "order_index": 8,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.594065Z"
+    },
+    {
+      "id": "f78d93af-0fd2-401c-ab3b-1aa0a5c778cd",
+      "category": "feaf1efb-3af5-408a-9fd8-54a63eb932e8",
+      "category_name": "Support",
+      "question": "How do I create a support ticket?",
+      "answer": "You can open a support ticket either by navigating to the \"Support\" page and filling out the ticket form, or directly inside the AI Chat Widget by typing \"create ticket\" or clicking \"Open Support Ticket\" when an inquiry requires human escalation.",
+      "order_index": 9,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.602460Z"
+    },
+    {
+      "id": "be0db524-ea18-4ffc-9ffc-248a160f6297",
+      "category": "feaf1efb-3af5-408a-9fd8-54a63eb932e8",
+      "category_name": "Support",
+      "question": "How can I report a technical problem?",
+      "answer": "Use our Support page to submit a Bug Report. Be sure to include your request correlation ID (X-Request-ID) or any displayed error code (such as SB-1001 or 500) to help our engineering team trace the issue.",
+      "order_index": 10,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.607449Z"
+    },
+    {
+      "id": "04826a33-88f8-4e4d-8b33-4c81c45130a6",
+      "category": "3912ba97-098c-4a3c-bd33-b41141a72322",
+      "category_name": "Privacy & Security",
+      "question": "How is my data handled?",
+      "answer": "Resume documents are kept in private isolated storage on the server, separate from public media. Documents and private matches are strictly accessible only by the authenticated owner. Passwords are salted and hashed using industry-standard PBKDF2.",
+      "order_index": 11,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.614105Z"
+    },
+    {
+      "id": "cd9c8503-c5c8-476f-8265-7187539abe0d",
+      "category": "591f14ab-d35e-4119-a1ed-bf8e6a5dbf95",
+      "category_name": "AI Assistant",
+      "question": "What happens when the AI service is unavailable?",
+      "answer": "SkillBridge is architected with complete offline resilience. If the Google Gemini LLM or SentenceTransformers microservice is unreachable, the system automatically falls back to deterministic lexical skill overlap scoring and local FAQ retrieval without crashing.",
+      "order_index": 12,
+      "is_active": true,
+      "created_at": "2026-10-27T10:32:05.690162Z"
+    }
+  ]
+}

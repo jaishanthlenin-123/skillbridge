@@ -48,8 +48,20 @@ def build_gemini_payload(
             faq_lines.append(f"[{cat}] Q: {f['question']}\nA: {f['answer']}")
         doc_sections.append("\n".join(faq_lines))
 
-    # Error code context if user explicitly mentions an error
-    for code, info in ERROR_REGISTRY.items():
+    # Error code context if user explicitly mentions an error (PostgreSQL backed with in-memory fallback)
+    error_items = []
+    try:
+        from apps.core.models import ErrorCode
+        db_errors = list(ErrorCode.objects.filter(is_active=True))
+        if db_errors:
+            error_items = [(e.code, e.to_dict()) for e in db_errors]
+    except Exception:
+        pass
+
+    if not error_items:
+        error_items = list(ERROR_REGISTRY.items())
+
+    for code, info in error_items:
         if code.lower() in clean_query.lower():
             doc_sections.append(
                 f"--- Error Code Documentation: {code} ({info['title']}) ---\n"

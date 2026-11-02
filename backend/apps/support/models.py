@@ -43,6 +43,7 @@ class SupportTicket(models.Model):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='open', db_index=True)
     conversation_id = models.CharField(max_length=120, blank=True, default='')
     diagnostic_id = models.CharField(max_length=120, blank=True, default='')
+    is_deleted = models.BooleanField(default=False, db_index=True)
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
