@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
   private handleOpenChat = () => {
     window.dispatchEvent(
       new CustomEvent('skillbridge:open-chat', {
-        detail: { prompt: 'I encountered an interface rendering error. Please help.' },
+        detail: { prefill: 'Can you help me understand this error and how to resolve it?' },
       })
     );
   };

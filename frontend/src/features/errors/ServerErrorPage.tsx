@@ -1,40 +1,25 @@
-import React, { useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, Home, RefreshCw, LifeBuoy, Bot } from 'lucide-react';
 
 export const ServerErrorPage: React.FC<{ error?: Error; resetErrorBoundary?: () => void }> = ({
   error,
   resetErrorBoundary,
 }) => {
-  const location = useLocation();
-  const lastTriggeredPathRef = useRef<string | null>(null);
-
   useEffect(() => {
-    // Only automatically trigger once per unique visit to this 500 path
-    if (lastTriggeredPathRef.current === location.pathname) {
-      return;
-    }
-    lastTriggeredPathRef.current = location.pathname;
-
-    const timer = setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent('skillbridge:open-chat', {
-          detail: {
-            prompt: 'What does error 500 mean and what should I do?',
-            source: 'error_500_auto',
-          },
-        })
-      );
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
+    // Register active 500 error context without opening or submitting anything
+    sessionStorage.setItem('skillbridge_current_error', '500');
+    return () => {
+      sessionStorage.removeItem('skillbridge_current_error');
+    };
+  }, []);
 
   const handleOpenAssistant = () => {
+    // Only open the assistant and prefill the question; never auto-send
     window.dispatchEvent(
       new CustomEvent('skillbridge:open-chat', {
         detail: {
-          prompt: 'What does error 500 mean and what should I do?',
+          prefill: 'What does error 500 mean and what should I do?',
           source: 'error_500_manual',
         },
       })

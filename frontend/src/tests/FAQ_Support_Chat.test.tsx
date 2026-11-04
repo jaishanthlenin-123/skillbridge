@@ -179,14 +179,7 @@ describe('Phase 2 Frontend Upgrades', () => {
     expect(vi.mocked(api.sendAssistantFeedback)).toHaveBeenCalledTimes(2);
   });
 
-  it('automatically opens Career Assistant and submits 404 contextual question when visiting NotFoundPage', async () => {
-    vi.mocked(api.sendAssistantChat).mockResolvedValue({
-      conversation_id: 'conv_404_test',
-      answer: 'Error 404 means the requested page or resource could not be found.',
-      mode: 'grounded_error_404',
-      can_create_ticket: false,
-    });
-
+  it('keeps assistant closed on NotFoundPage, and prefills 404 question without auto-sending on manual button click', async () => {
     render(
       <BrowserRouter>
         <div>
@@ -196,34 +189,25 @@ describe('Phase 2 Frontend Upgrades', () => {
       </BrowserRouter>
     );
 
-    await waitFor(
-      () => {
-        expect(api.sendAssistantChat).toHaveBeenCalledWith(
-          expect.objectContaining({
-            message: 'What does error 404 mean and what should I do?',
-          })
-        );
-      },
-      { timeout: 3000 }
-    );
+    // 1. Assistant must NEVER open automatically
+    expect(screen.getByLabelText(/Open AI Assistant/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Ask about career planning, skills/i)).not.toBeInTheDocument();
+    expect(api.sendAssistantChat).not.toHaveBeenCalled();
 
-    // Verify exactly one submission
-    expect(vi.mocked(api.sendAssistantChat)).toHaveBeenCalledTimes(1);
+    // 2. Click "Ask the Assistant" button
+    const askButton = screen.getByText(/Ask the Assistant/i);
+    fireEvent.click(askButton);
 
-    // Verify ChatWidget is open and displaying the assistant response
-    await waitFor(() => {
-      expect(screen.getByText('Error 404 means the requested page or resource could not be found.')).toBeInTheDocument();
-    });
+    // 3. Assistant is now open with 404 question prefilled in the input
+    const input = screen.getByPlaceholderText(/Ask about career planning, skills/i) as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('What does error 404 mean and what should I do?');
+
+    // 4. Question is NOT automatically sent
+    expect(api.sendAssistantChat).not.toHaveBeenCalled();
   });
 
-  it('automatically opens Career Assistant and submits 500 contextual question when visiting ServerErrorPage', async () => {
-    vi.mocked(api.sendAssistantChat).mockResolvedValue({
-      conversation_id: 'conv_500_test',
-      answer: 'Error 500 means an unexpected internal server error occurred.',
-      mode: 'grounded_error_500',
-      can_create_ticket: true,
-    });
-
+  it('keeps assistant closed on ServerErrorPage, and prefills 500 question without auto-sending on manual button click', async () => {
     render(
       <BrowserRouter>
         <div>
@@ -233,56 +217,51 @@ describe('Phase 2 Frontend Upgrades', () => {
       </BrowserRouter>
     );
 
-    await waitFor(
-      () => {
-        expect(api.sendAssistantChat).toHaveBeenCalledWith(
-          expect.objectContaining({
-            message: 'What does error 500 mean and what should I do?',
-          })
-        );
-      },
-      { timeout: 3000 }
-    );
+    // 1. Assistant remains closed
+    expect(screen.getByLabelText(/Open AI Assistant/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Ask about career planning, skills/i)).not.toBeInTheDocument();
+    expect(api.sendAssistantChat).not.toHaveBeenCalled();
 
-    // Verify exactly one submission
-    expect(vi.mocked(api.sendAssistantChat)).toHaveBeenCalledTimes(1);
+    // 2. Click "Ask the Assistant" button
+    const askButton = screen.getByText(/Ask the Assistant/i);
+    fireEvent.click(askButton);
 
-    // Verify ChatWidget is open and displaying the response
-    await waitFor(() => {
-      expect(screen.getByText('Error 500 means an unexpected internal server error occurred.')).toBeInTheDocument();
-    });
+    // 3. Assistant is open with 500 question prefilled
+    const input = screen.getByPlaceholderText(/Ask about career planning, skills/i) as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('What does error 500 mean and what should I do?');
+
+    // 4. Question is NOT automatically sent
+    expect(api.sendAssistantChat).not.toHaveBeenCalled();
   });
 
-  it('allows user to close the assistant on 404 page and keeps it closed', async () => {
-    vi.mocked(api.sendAssistantChat).mockResolvedValue({
-      conversation_id: 'conv_close_test',
-      answer: '404 explanation message.',
-      mode: 'grounded_error_404',
-      can_create_ticket: false,
-    });
-
+  it('preserves user custom typed draft when closing and reopening chat', async () => {
     render(
       <BrowserRouter>
-        <div>
-          <NotFoundPage />
-          <ChatWidget />
-        </div>
+        <ChatWidget />
       </BrowserRouter>
     );
 
-    // Wait until the chat is open with the response
-    await waitFor(() => {
-      expect(screen.getByText('404 explanation message.')).toBeInTheDocument();
-    });
+    // Open chat
+    const launcher = screen.getByLabelText(/Open AI Assistant/i);
+    fireEvent.click(launcher);
 
-    // Close the assistant
+    const input = screen.getByPlaceholderText(/Ask about career planning, skills/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'How can I transition into Cloud Architecture?' } });
+    expect(input.value).toBe('How can I transition into Cloud Architecture?');
+
+    // Close chat
     const closeBtn = screen.getByTitle(/Close Assistant/i);
     fireEvent.click(closeBtn);
 
-    // Verify chat window is closed and launcher button is visible
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Open AI Assistant/i)).toBeInTheDocument();
-      expect(screen.queryByTitle(/Close Assistant/i)).not.toBeInTheDocument();
-    });
+    // Verify chat is closed
+    expect(screen.getByLabelText(/Open AI Assistant/i)).toBeInTheDocument();
+
+    // Reopen chat
+    fireEvent.click(screen.getByLabelText(/Open AI Assistant/i));
+
+    // Custom draft is preserved!
+    const reopenedInput = screen.getByPlaceholderText(/Ask about career planning, skills/i) as HTMLInputElement;
+    expect(reopenedInput.value).toBe('How can I transition into Cloud Architecture?');
   });
 });

@@ -1,37 +1,22 @@
-import React, { useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Compass, Home, Briefcase, HelpCircle, Bot } from 'lucide-react';
 
 export const NotFoundPage: React.FC = () => {
-  const location = useLocation();
-  const lastTriggeredPathRef = useRef<string | null>(null);
-
   useEffect(() => {
-    // Only automatically trigger once per unique visit to this 404 path
-    if (lastTriggeredPathRef.current === location.pathname) {
-      return;
-    }
-    lastTriggeredPathRef.current = location.pathname;
-
-    const timer = setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent('skillbridge:open-chat', {
-          detail: {
-            prompt: 'What does error 404 mean and what should I do?',
-            source: 'error_404_auto',
-          },
-        })
-      );
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
+    // Register active 404 error context without opening or submitting anything
+    sessionStorage.setItem('skillbridge_current_error', '404');
+    return () => {
+      sessionStorage.removeItem('skillbridge_current_error');
+    };
+  }, []);
 
   const handleOpenAssistant = () => {
+    // Only open the assistant and prefill the question; never auto-send
     window.dispatchEvent(
       new CustomEvent('skillbridge:open-chat', {
         detail: {
-          prompt: 'What does error 404 mean and what should I do?',
+          prefill: 'What does error 404 mean and what should I do?',
           source: 'error_404_manual',
         },
       })

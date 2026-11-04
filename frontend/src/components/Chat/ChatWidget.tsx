@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   MessageSquare, X, Send, Bot, User, Sparkles, ThumbsUp, ThumbsDown,
   AlertCircle, CheckCircle2, Ticket, RefreshCw, ChevronDown, LifeBuoy
 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { ChatMessage } from '../../types';
+
+function getContextualErrorQuestion(errCode?: string | null): string | null {
+  if (!errCode) return null;
+  const c = errCode.trim().toUpperCase();
+  if (c === '404') return 'What does error 404 mean and what should I do?';
+  if (c === '500') return 'What does error 500 mean and what should I do?';
+  if (['400', '401', '403', '429', '503', 'SB-1001'].includes(c)) {
+    return `What does error ${c} mean and what should I do?`;
+  }
+  return 'Can you help me understand this error and how to resolve it?';
+}
+
+function isKnownErrorPrefill(text: string): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  if (t === 'Can you help me understand this error and how to resolve it?') return true;
+  return /^What does error [a-zA-Z0-9_-]+ mean and what should I do\?$/i.test(t);
+}
 
 function isTicketIntent(userText?: string, assistantText?: string): boolean {
   if (!userText && !assistantText) return false;
@@ -39,6 +57,7 @@ function isTicketIntent(userText?: string, assistantText?: string): boolean {
 
 export const ChatWidget: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = sessionStorage.getItem('skillbridge_chat_history');
@@ -196,20 +215,46 @@ export const ChatWidget: React.FC = () => {
   });
 
   useEffect(() => {
+    // If navigating to an ordinary page and input contains an untouched error prefill, clear it
+    const currentErr = sessionStorage.getItem('skillbridge_current_error');
+    if (!currentErr) {
+      setInput((prev) => (isKnownErrorPrefill(prev) ? '' : prev));
+    }
+  }, [location.pathname]);
+
+  const handleOpenLauncher = () => {
+    setIsOpen(true);
+    // If opened on an active error page, prefill the contextual question if input is empty
+    const currentErr = sessionStorage.getItem('skillbridge_current_error');
+    if (currentErr) {
+      const errorQuestion = getContextualErrorQuestion(currentErr);
+      if (errorQuestion) {
+        setInput((prev) => {
+          if (!prev.trim() || isKnownErrorPrefill(prev)) {
+            return errorQuestion;
+          }
+          return prev;
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
     const handleOpenChat = (e?: any) => {
       setIsOpen(true);
+      const prefill = e?.detail?.prefill?.trim();
       const prompt = e?.detail?.prompt?.trim();
-      if (prompt) {
-        const now = Date.now();
-        // Prevent duplicate dispatch within 2000ms
-        if (
-          lastDispatchedPromptRef.current &&
-          lastDispatchedPromptRef.current.prompt === prompt &&
-          now - lastDispatchedPromptRef.current.time < 2000
-        ) {
-          return;
-        }
-        lastDispatchedPromptRef.current = { prompt, time: now };
+
+      if (prefill) {
+        // Prefill only: never send automatically, and preserve user draft
+        setInput((prev) => {
+          if (!prev.trim() || isKnownErrorPrefill(prev)) {
+            return prefill;
+          }
+          return prev;
+        });
+      } else if (prompt) {
+        // Legacy auto-send prompt support if explicitly requested
         handleSendMessageRef.current(prompt);
       }
     };
@@ -301,7 +346,7 @@ export const ChatWidget: React.FC = () => {
       {/* Floating Launcher Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpenLauncher}
           className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-xl shadow-indigo-600/40 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 cursor-pointer relative group"
           aria-label="Open AI Assistant"
         >
