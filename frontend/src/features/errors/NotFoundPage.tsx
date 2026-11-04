@@ -1,14 +1,41 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Compass, Home, Briefcase, HelpCircle, Bot } from 'lucide-react';
 
 export const NotFoundPage: React.FC = () => {
-  const handleOpenAssistant = () => {
-    // Dispatches a custom event or triggers chat button
-    const launcher = document.querySelector('button[aria-label="Open AI Assistant"]') as HTMLButtonElement | null;
-    if (launcher) {
-      launcher.click();
+  const location = useLocation();
+  const lastTriggeredPathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Only automatically trigger once per unique visit to this 404 path
+    if (lastTriggeredPathRef.current === location.pathname) {
+      return;
     }
+    lastTriggeredPathRef.current = location.pathname;
+
+    const timer = setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('skillbridge:open-chat', {
+          detail: {
+            prompt: 'What does error 404 mean and what should I do?',
+            source: 'error_404_auto',
+          },
+        })
+      );
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
+  const handleOpenAssistant = () => {
+    window.dispatchEvent(
+      new CustomEvent('skillbridge:open-chat', {
+        detail: {
+          prompt: 'What does error 404 mean and what should I do?',
+          source: 'error_404_manual',
+        },
+      })
+    );
   };
 
   return (

@@ -87,6 +87,18 @@ export const ChatWidget: React.FC = () => {
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
+  const lastDispatchedPromptRef = useRef<{ prompt: string; time: number } | null>(null);
+  const conversationIdRef = useRef(conversationId);
+  const guestSessionIdRef = useRef(guestSessionId);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  useEffect(() => {
+    guestSessionIdRef.current = guestSessionId;
+  }, [guestSessionId]);
 
   useEffect(() => {
     let mounted = true;
@@ -108,27 +120,12 @@ export const ChatWidget: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handleOpenChat = (e?: any) => {
-      setIsOpen(true);
-      if (e?.detail?.prompt) {
-        handleSendMessage(e.detail.prompt);
-      }
-    };
-    window.addEventListener('skillbridge:open-chat', handleOpenChat);
-    return () => window.removeEventListener('skillbridge:open-chat', handleOpenChat);
-  }, []);
-
-  useEffect(() => {
-    sessionStorage.setItem('skillbridge_chat_history', JSON.stringify(messages));
-    if (isOpen && typeof messagesEndRef.current?.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, isOpen]);
-
   const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || input;
-    if (!textToSend.trim() || sending) return;
+    if (!textToSend.trim() || sendingRef.current) return;
+
+    sendingRef.current = true;
+    setSending(true);
 
     const userMsg: ChatMessage = {
       id: `msg_user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -139,16 +136,15 @@ export const ChatWidget: React.FC = () => {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!customText) setInput('');
-    setSending(true);
 
     try {
       const resp = await api.sendAssistantChat({
         message: textToSend.trim(),
-        conversation_id: conversationId,
-        guest_session_id: guestSessionId,
+        conversation_id: conversationIdRef.current,
+        guest_session_id: guestSessionIdRef.current,
       });
 
-      if (resp.conversation_id && resp.conversation_id !== conversationId) {
+      if (resp.conversation_id && resp.conversation_id !== conversationIdRef.current) {
         setConversationId(resp.conversation_id);
         sessionStorage.setItem('skillbridge_conv_id', resp.conversation_id);
       }
@@ -189,9 +185,37 @@ export const ChatWidget: React.FC = () => {
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
+
+  const handleSendMessageRef = useRef(handleSendMessage);
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+  });
+
+  useEffect(() => {
+    const handleOpenChat = (e?: any) => {
+      setIsOpen(true);
+      const prompt = e?.detail?.prompt?.trim();
+      if (prompt) {
+        const now = Date.now();
+        // Prevent duplicate dispatch within 2000ms
+        if (
+          lastDispatchedPromptRef.current &&
+          lastDispatchedPromptRef.current.prompt === prompt &&
+          now - lastDispatchedPromptRef.current.time < 2000
+        ) {
+          return;
+        }
+        lastDispatchedPromptRef.current = { prompt, time: now };
+        handleSendMessageRef.current(prompt);
+      }
+    };
+    window.addEventListener('skillbridge:open-chat', handleOpenChat);
+    return () => window.removeEventListener('skillbridge:open-chat', handleOpenChat);
+  }, []);
 
   const handleCreateTicketFromChat = async () => {
     setSending(true);

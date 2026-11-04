@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { FAQPage } from '../features/faq/FAQPage';
 import { SupportPage } from '../features/support/SupportPage';
 import { NotFoundPage } from '../features/errors/NotFoundPage';
+import { ServerErrorPage } from '../features/errors/ServerErrorPage';
 import { ChatWidget } from '../components/Chat/ChatWidget';
 import { api } from '../services/api';
 
@@ -176,5 +177,112 @@ describe('Phase 2 Frontend Upgrades', () => {
       );
     });
     expect(vi.mocked(api.sendAssistantFeedback)).toHaveBeenCalledTimes(2);
+  });
+
+  it('automatically opens Career Assistant and submits 404 contextual question when visiting NotFoundPage', async () => {
+    vi.mocked(api.sendAssistantChat).mockResolvedValue({
+      conversation_id: 'conv_404_test',
+      answer: 'Error 404 means the requested page or resource could not be found.',
+      mode: 'grounded_error_404',
+      can_create_ticket: false,
+    });
+
+    render(
+      <BrowserRouter>
+        <div>
+          <NotFoundPage />
+          <ChatWidget />
+        </div>
+      </BrowserRouter>
+    );
+
+    await waitFor(
+      () => {
+        expect(api.sendAssistantChat).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'What does error 404 mean and what should I do?',
+          })
+        );
+      },
+      { timeout: 3000 }
+    );
+
+    // Verify exactly one submission
+    expect(vi.mocked(api.sendAssistantChat)).toHaveBeenCalledTimes(1);
+
+    // Verify ChatWidget is open and displaying the assistant response
+    await waitFor(() => {
+      expect(screen.getByText('Error 404 means the requested page or resource could not be found.')).toBeInTheDocument();
+    });
+  });
+
+  it('automatically opens Career Assistant and submits 500 contextual question when visiting ServerErrorPage', async () => {
+    vi.mocked(api.sendAssistantChat).mockResolvedValue({
+      conversation_id: 'conv_500_test',
+      answer: 'Error 500 means an unexpected internal server error occurred.',
+      mode: 'grounded_error_500',
+      can_create_ticket: true,
+    });
+
+    render(
+      <BrowserRouter>
+        <div>
+          <ServerErrorPage />
+          <ChatWidget />
+        </div>
+      </BrowserRouter>
+    );
+
+    await waitFor(
+      () => {
+        expect(api.sendAssistantChat).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'What does error 500 mean and what should I do?',
+          })
+        );
+      },
+      { timeout: 3000 }
+    );
+
+    // Verify exactly one submission
+    expect(vi.mocked(api.sendAssistantChat)).toHaveBeenCalledTimes(1);
+
+    // Verify ChatWidget is open and displaying the response
+    await waitFor(() => {
+      expect(screen.getByText('Error 500 means an unexpected internal server error occurred.')).toBeInTheDocument();
+    });
+  });
+
+  it('allows user to close the assistant on 404 page and keeps it closed', async () => {
+    vi.mocked(api.sendAssistantChat).mockResolvedValue({
+      conversation_id: 'conv_close_test',
+      answer: '404 explanation message.',
+      mode: 'grounded_error_404',
+      can_create_ticket: false,
+    });
+
+    render(
+      <BrowserRouter>
+        <div>
+          <NotFoundPage />
+          <ChatWidget />
+        </div>
+      </BrowserRouter>
+    );
+
+    // Wait until the chat is open with the response
+    await waitFor(() => {
+      expect(screen.getByText('404 explanation message.')).toBeInTheDocument();
+    });
+
+    // Close the assistant
+    const closeBtn = screen.getByTitle(/Close Assistant/i);
+    fireEvent.click(closeBtn);
+
+    // Verify chat window is closed and launcher button is visible
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Open AI Assistant/i)).toBeInTheDocument();
+      expect(screen.queryByTitle(/Close Assistant/i)).not.toBeInTheDocument();
+    });
   });
 });
