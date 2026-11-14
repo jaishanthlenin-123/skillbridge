@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SkillBridge Developer & API Portal{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #8b5cf6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .logo-icon {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.9rem;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    nav a:hover, nav a.active {
+      color: #fff;
+    }
+
+    .btn-nav-primary {
+      background: var(--primary);
+      color: #fff !important;
+      padding: 0.4rem 0.9rem;
+      border-radius: 0.5rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-nav-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      background-color: var(--card-bg);
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.825rem;
+    }
+
+    .badge-dtl {
+      display: inline-block;
+      background: rgba(99, 102, 241, 0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="{% url 'portal-home' %}" class="logo-badge">
+        <div class="logo-icon">SB</div>
+        <span>SkillBridge</span>
+      </a>
+      <nav>
+        <ul>
+          <li><a href="{% url 'portal-home' %}">Portal Home</a></li>
+          <li><a href="{% url 'portal-errors' %}">Error Registry</a></li>
+          <li><a href="/api/docs/" target="_blank">Swagger API Docs</a></li>
+          <li><a href="/admin/" target="_blank">Django Admin</a></li>
+          <li><a href="https://skillbridge-frontend-v45n.onrender.com" target="_blank" class="btn-nav-primary">Open React App &rarr;</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>&copy; 2026 SkillBridge AI Platform &bull; Rendered dynamically using <span class="badge-dtl">Django Templates (DTL)</span> &bull; All systems operational</p>
+  </footer>
+</body>
+</html>
+

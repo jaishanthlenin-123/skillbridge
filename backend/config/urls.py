@@ -1,8 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from apps.core.views import PortalHomeView, PortalErrorRegistryView
 
 urlpatterns = [
+    # Django Template Portal Views
+    path('', PortalHomeView.as_view(), name='portal-home'),
+    path('portal/errors/', PortalErrorRegistryView.as_view(), name='portal-errors'),
+
     path('admin/', admin.site.urls),
 
     # SkillBridge API v1

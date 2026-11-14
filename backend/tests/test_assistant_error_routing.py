@@ -111,3 +111,4 @@ class TestAssistantErrorRouting:
         data = res.json()
         assert data['mode'] == 'gemini_generated'
         mock_gemini.assert_called_once()
+

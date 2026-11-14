@@ -2,6 +2,7 @@ import os
 import requests
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
+from django.views.generic import TemplateView
 from django.db import connection
 from django.conf import settings
 from config.errors import ERROR_REGISTRY, get_error_info
@@ -141,3 +142,39 @@ class ErrorRegistryDetailView(views.APIView):
 
         info = get_error_info(code)
         return Response(info)
+
+class PortalHomeView(TemplateView):
+    """
+    Renders the SkillBridge developer portal homepage using Django Templates (DTL).
+    """
+    template_name = 'home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'SkillBridge Developer & API Portal'
+        context['frontend_url'] = 'https://skillbridge-frontend-v45n.onrender.com'
+        try:
+            cnt = ErrorCode.objects.filter(is_active=True).count()
+            context['error_count'] = cnt if cnt > 0 else len(ERROR_REGISTRY)
+        except Exception:
+            context['error_count'] = len(ERROR_REGISTRY)
+        return context
+
+class PortalErrorRegistryView(TemplateView):
+    """
+    Renders the platform error registry catalog using Django Templates (DTL).
+    """
+    template_name = 'error_registry.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'SkillBridge Standard Error Catalog'
+        try:
+            db_errors = list(ErrorCode.objects.filter(is_active=True).order_by('code'))
+            if db_errors:
+                context['errors'] = [e.to_dict() for e in db_errors]
+            else:
+                context['errors'] = list(ERROR_REGISTRY.values())
+        except Exception:
+            context['errors'] = list(ERROR_REGISTRY.values())
+        return context

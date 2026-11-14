@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}SkillBridge Developer & API Portal — Home{% endblock %}
+
+{% block content %}
+<style>
+  .hero-card {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(30, 27, 75, 0.6));
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 1rem;
+    letter-spacing: -0.025em;
+  }
+
+  .hero-subtitle {
+    color: var(--text-muted);
+    font-size: 1.15rem;
+    max-width: 720px;
+    margin: 0 auto 2rem;
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background-color: var(--success);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.75rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(99, 102, 241, 0.5);
+  }
+
+  .feature-icon {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .feature-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #fff;
+  }
+
+  .feature-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .feature-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .feature-link:hover {
+    color: #a5b4fc;
+    text-decoration: underline;
+  }
+</style>
+
+<div class="hero-card">
+  <div class="badge-dtl" style="margin-bottom: 1rem;">Django Full-Stack Portal</div>
+  <h1 class="hero-title">SkillBridge Backend & API Services</h1>
+  <p class="hero-subtitle">
+    An explainable resume intelligence and AI-powered career development platform. 
+    This portal provides server-rendered diagnostic interfaces, error registries, and OpenAPI documentation.
+  </p>
+  <div class="status-row">
+    <div class="status-pill"><span class="status-dot"></span> PostgreSQL Relational Storage: Active</div>
+    <div class="status-pill"><span class="status-dot"></span> MongoDB Atlas Telemetry: Connected</div>
+    <div class="status-pill"><span class="status-dot"></span> Gemini AI LLM Engine: Live</div>
+    <div class="status-pill"><span class="status-dot"></span> Error Registry: {{ error_count }} Codes Loaded</div>
+  </div>
+</div>
+
+<h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.25rem; color: #fff;">Platform Portals &amp; Tooling</h2>
+
+<div class="grid-cards">
+  <!-- Error Registry -->
+  <div class="feature-card">
+    <div class="feature-icon">&#x26A0;&#xFE0F;</div>
+    <h3 class="feature-title">Standard Error Catalog</h3>
+    <p class="feature-desc">
+      Inspect all client-safe platform error codes (e.g. 404, 500, SB-1001) with standardized explanations and recovery guidance.
+    </p>
+    <a href="{% url 'portal-errors' %}" class="feature-link">View Error Registry (Django Template) &rarr;</a>
+  </div>
+
+  <!-- Swagger UI -->
+  <div class="feature-card">
+    <div class="feature-icon">&#x1F4DA;</div>
+    <h3 class="feature-title">Interactive API Docs</h3>
+    <p class="feature-desc">
+      Explore all RESTful endpoints, request schemas, and responses using the interactive OpenAPI Swagger UI console.
+    </p>
+    <a href="/api/docs/" target="_blank" class="feature-link">Open Swagger UI &rarr;</a>
+  </div>
+
+  <!-- Django Admin -->
+  <div class="feature-card">
+    <div class="feature-icon">&#x2699;&#xFE0F;</div>
+    <h3 class="feature-title">Django Administration</h3>
+    <p class="feature-desc">
+      Manage platform user accounts, job postings, support tickets, and system error codes via the authenticated Django admin.
+    </p>
+    <a href="/admin/" target="_blank" class="feature-link">Open Django Admin &rarr;</a>
+  </div>
+
+  <!-- Live React App -->
+  <div class="feature-card">
+    <div class="feature-icon">&#x2728;</div>
+    <h3 class="feature-title">Frontend Single Page Application</h3>
+    <p class="feature-desc">
+      Access the user-facing web interface featuring resume parsing, explainable skill matching, roadmaps, and Career Assistant chat.
+    </p>
+    <a href="{{ frontend_url }}" target="_blank" class="feature-link">Open React SPA on Render &rarr;</a>
+  </div>
+</div>
+{% endblock %}
+
